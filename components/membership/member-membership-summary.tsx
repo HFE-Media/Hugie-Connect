@@ -5,6 +5,7 @@ import type {
   MemberStatus,
   MembershipPeriodStatus,
 } from "@/types/membership";
+import { DigitalMembershipCard } from "@/components/membership/digital-membership-card";
 import { cn } from "@/lib/utils";
 
 type MemberMembershipSummaryCardProps = {
@@ -46,6 +47,14 @@ function formatBillingCycle(value: string | null) {
   return value.replace("_", " ");
 }
 
+function getMemberName(summary: MemberMembershipSummary) {
+  const name = [summary.memberUser.first_name, summary.memberUser.last_name]
+    .filter(Boolean)
+    .join(" ");
+
+  return name || summary.memberUser.email;
+}
+
 function StatusBadge({
   children,
   tone,
@@ -84,7 +93,7 @@ function getMemberStatusTone(status: MemberStatus) {
 export function MemberMembershipSummaryCard({
   summary,
 }: MemberMembershipSummaryCardProps) {
-  const { member, membershipType, currentPeriod } = summary;
+  const { member, organisation, membershipType, currentPeriod } = summary;
   const fields = [
     ["Membership type", membershipType.name],
     ["Member number", member.member_number],
@@ -112,6 +121,19 @@ export function MemberMembershipSummaryCard({
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="sm:col-span-2 lg:col-span-3">
+          <DigitalMembershipCard
+            organisationName={organisation.name}
+            organisationLogoUrl={organisation.logo_url}
+            memberName={getMemberName(summary)}
+            membershipTypeName={membershipType.name}
+            memberNumber={member.member_number}
+            status={member.status}
+            joinedAt={member.joined_at}
+            expiresAt={member.expires_at}
+          />
+        </div>
+
         {fields.map(([label, value]) => (
           <div key={label} className="rounded-lg border bg-background p-4">
             <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">

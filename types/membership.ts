@@ -22,6 +22,8 @@ export type MembershipCardStatus = "active" | "revoked" | "expired";
 
 export type MembershipType =
   Database["public"]["Tables"]["membership_types"]["Row"];
+export type MembershipOrganisation =
+  Database["public"]["Tables"]["organisations"]["Row"];
 export type MembershipApplication =
   Database["public"]["Tables"]["membership_applications"]["Row"];
 export type Member = Database["public"]["Tables"]["members"]["Row"];
@@ -33,6 +35,8 @@ export type MembershipUser = Database["public"]["Tables"]["users"]["Row"];
 
 export type MemberMembershipSummary = {
   member: Member;
+  memberUser: MembershipUser;
+  organisation: MembershipOrganisation;
   membershipType: MembershipType;
   currentPeriod: MembershipPeriod | null;
 };

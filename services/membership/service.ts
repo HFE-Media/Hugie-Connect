@@ -19,7 +19,10 @@ import {
   type MembershipRepositoryClient,
 } from "@/services/membership/repository";
 import { createSupabaseAdminClient } from "@/services/supabase/admin";
-import type { MemberMembershipSummary, MembershipPeriod } from "@/types/membership";
+import type {
+  MemberMembershipSummary,
+  MembershipPeriod,
+} from "@/types/membership";
 
 function createMembershipCardToken() {
   return randomBytes(32).toString("hex");
@@ -94,6 +97,22 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         return null;
       }
 
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(appUser.organisation_id);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be loaded.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        return null;
+      }
+
       const { data: members, error: membersError } =
         await repository.listOwnVisibleMembers({
           userId: appUser.id,
@@ -155,6 +174,8 @@ export function createMembershipService(client: MembershipRepositoryClient) {
 
       return {
         member,
+        memberUser: appUser,
+        organisation,
         membershipType,
         currentPeriod: resolveCurrentMembershipPeriod(periods),
       };
