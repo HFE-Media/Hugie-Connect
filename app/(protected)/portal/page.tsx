@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserCircle } from "lucide-react";
+import { CreditCard, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/services/auth/server";
@@ -40,6 +40,22 @@ export default async function PortalPage() {
               {profile.roles.join(", ")}
             </p>
           </div>
+          <Link
+            href="/portal/membership"
+            className="rounded-xl border bg-background p-4 transition hover:border-secondary/60 hover:shadow-soft"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <CreditCard className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">My Membership</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  View your own status and validity details.
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
       </section>
     </main>

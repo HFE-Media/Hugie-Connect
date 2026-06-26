@@ -29,6 +29,13 @@ export type MembershipPeriod =
   Database["public"]["Tables"]["membership_periods"]["Row"];
 export type MembershipCard =
   Database["public"]["Tables"]["membership_cards"]["Row"];
+export type MembershipUser = Database["public"]["Tables"]["users"]["Row"];
+
+export type MemberMembershipSummary = {
+  member: Member;
+  membershipType: MembershipType;
+  currentPeriod: MembershipPeriod | null;
+};
 
 export type CreateMembershipApplicationInput = {
   organisationId: string;

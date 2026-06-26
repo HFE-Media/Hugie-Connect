@@ -19,9 +19,19 @@ import {
   type MembershipRepositoryClient,
 } from "@/services/membership/repository";
 import { createSupabaseAdminClient } from "@/services/supabase/admin";
+import type { MemberMembershipSummary, MembershipPeriod } from "@/types/membership";
 
 function createMembershipCardToken() {
   return randomBytes(32).toString("hex");
+}
+
+function resolveCurrentMembershipPeriod(periods: MembershipPeriod[]) {
+  return (
+    periods.find((period) => period.status === "active") ??
+    periods.find((period) => period.status === "pending") ??
+    periods[0] ??
+    null
+  );
 }
 
 export function createMembershipService(client: MembershipRepositoryClient) {
@@ -63,6 +73,91 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       }
 
       return data;
+    },
+
+    async getOwnMembershipSummary(
+      authUserId: string,
+    ): Promise<MemberMembershipSummary | null> {
+      const { data: appUser, error: appUserError } =
+        await repository.getUserByAuthUserId(authUserId);
+
+      if (appUserError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "User profile could not be loaded.",
+          500,
+          appUserError,
+        );
+      }
+
+      if (!appUser?.organisation_id) {
+        return null;
+      }
+
+      const { data: members, error: membersError } =
+        await repository.listOwnVisibleMembers({
+          userId: appUser.id,
+          organisationId: appUser.organisation_id,
+        });
+
+      if (membersError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership details could not be loaded.",
+          500,
+          membersError,
+        );
+      }
+
+      const member = members[0];
+
+      if (!member) {
+        return null;
+      }
+
+      const { data: membershipType, error: membershipTypeError } =
+        await repository.getMembershipTypeById({
+          id: member.membership_type_id,
+          organisationId: member.organisation_id,
+        });
+
+      if (membershipTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be loaded.",
+          500,
+          membershipTypeError,
+        );
+      }
+
+      if (!membershipType) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type is missing for this member.",
+          500,
+        );
+      }
+
+      const { data: periods, error: periodsError } =
+        await repository.listMembershipPeriodsByMemberId({
+          memberId: member.id,
+          organisationId: member.organisation_id,
+        });
+
+      if (periodsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership period could not be loaded.",
+          500,
+          periodsError,
+        );
+      }
+
+      return {
+        member,
+        membershipType,
+        currentPeriod: resolveCurrentMembershipPeriod(periods),
+      };
     },
 
     async createMembershipApplication(

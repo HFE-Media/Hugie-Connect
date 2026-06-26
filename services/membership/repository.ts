@@ -13,6 +13,14 @@ export type MembershipRepositoryClient = SupabaseClient<Database>;
 
 export function createMembershipRepository(client: MembershipRepositoryClient) {
   return {
+    async getUserByAuthUserId(authUserId: string) {
+      return client
+        .from("users")
+        .select("*")
+        .eq("auth_user_id", authUserId)
+        .maybeSingle();
+    },
+
     async listActiveOrganisations() {
       return client
         .from("organisations")
@@ -166,6 +174,31 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .eq("user_id", params.userId)
         .eq("organisation_id", params.organisationId)
         .order("created_at", { ascending: false });
+    },
+
+    async listOwnVisibleMembers(params: {
+      userId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("members")
+        .select("*")
+        .eq("user_id", params.userId)
+        .eq("organisation_id", params.organisationId)
+        .in("status", ["active", "pending"])
+        .order("created_at", { ascending: false });
+    },
+
+    async listMembershipPeriodsByMemberId(params: {
+      memberId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("membership_periods")
+        .select("*")
+        .eq("member_id", params.memberId)
+        .eq("organisation_id", params.organisationId)
+        .order("starts_at", { ascending: false });
     },
   };
 }

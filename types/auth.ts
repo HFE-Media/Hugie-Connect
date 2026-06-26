@@ -17,6 +17,7 @@ export type AppRole = (typeof APP_ROLES)[number];
 export type Permission =
   | "portal:view"
   | "profile:view_own"
+  | "membership:view_own"
   | "admin:shell:view"
   | "scanner:shell:view"
   | "users:roles:manage";
