@@ -28,6 +28,27 @@ export function createMembershipService(client: MembershipRepositoryClient) {
   const repository = createMembershipRepository(client);
 
   return {
+    async listActiveOrganisations() {
+      const { data, error } = await repository.listActiveOrganisations();
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisations could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return data;
+    },
+
+    async getDefaultPublicOrganisation() {
+      const organisations = await this.listActiveOrganisations();
+
+      return organisations[0] ?? null;
+    },
+
     async listMembershipTypes(organisationId: string) {
       const { data, error } =
         await repository.listMembershipTypes(organisationId);
@@ -48,6 +69,26 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       input: CreateMembershipApplicationValues,
     ) {
       const values = createMembershipApplicationSchema.parse(input);
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(values.organisationId);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        throw new AppError(
+          "BAD_REQUEST",
+          "Applications are not available for this organisation.",
+          400,
+        );
+      }
+
       const { data: membershipType, error: membershipTypeError } =
         await repository.getMembershipTypeById({
           id: values.membershipTypeId,

@@ -6,10 +6,10 @@ import { getPostLoginPath } from "@/lib/auth/permissions";
 import { getOptionalCurrentProfile } from "@/services/auth/server";
 
 const foundationItems = [
-  "Supabase Auth login",
-  "Protected route shells",
-  "Role-aware navigation",
-  "Permission utilities",
+  "Dynamic membership types",
+  "Public application form",
+  "Server-side validation",
+  "Pending application records",
 ];
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function HomePage() {
             <div className="max-w-3xl">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground">
                 <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
-                Authentication foundation ready
+                Membership applications open
               </div>
               <h1 className="text-4xl font-bold tracking-normal text-foreground sm:text-5xl lg:text-6xl">
                 A calm, secure foundation for a reusable community platform.
@@ -55,8 +55,9 @@ export default async function HomePage() {
               <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
                 Hugie Connect is being built as a production-grade SaaS
                 platform for memberships, events, access control, merchandise,
-                and administration. Sprint 01 adds secure authentication and
-                role-aware access without introducing business modules.
+                and administration. Public membership applications now use the
+                backend membership foundation without hardcoded membership
+                logic.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
@@ -66,7 +67,7 @@ export default async function HomePage() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <Link href="/forgot-password">Reset password</Link>
+                  <Link href="/membership/apply">Apply for membership</Link>
                 </Button>
               </div>
             </div>
@@ -77,9 +78,9 @@ export default async function HomePage() {
                   <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold">Sprint 01 Scope</h2>
+                  <h2 className="text-base font-semibold">Sprint 02 Task 3</h2>
                   <p className="text-sm text-muted-foreground">
-                    Authentication only, no business modules.
+                    Public application UI only.
                   </p>
                 </div>
               </div>

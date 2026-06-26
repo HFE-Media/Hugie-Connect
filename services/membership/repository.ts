@@ -13,6 +13,23 @@ export type MembershipRepositoryClient = SupabaseClient<Database>;
 
 export function createMembershipRepository(client: MembershipRepositoryClient) {
   return {
+    async listActiveOrganisations() {
+      return client
+        .from("organisations")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: true });
+    },
+
+    async getActiveOrganisationById(id: string) {
+      return client
+        .from("organisations")
+        .select("*")
+        .eq("id", id)
+        .eq("status", "active")
+        .maybeSingle();
+    },
+
     async listMembershipTypes(organisationId: string) {
       return client
         .from("membership_types")
