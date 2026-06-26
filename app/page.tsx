@@ -1,15 +1,23 @@
+import Link from "next/link";
 import { ArrowRight, Building2, ShieldCheck, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getPostLoginPath } from "@/lib/auth/permissions";
+import { getOptionalCurrentProfile } from "@/services/auth/server";
 
 const foundationItems = [
-  "App Router foundation",
-  "Typed service boundaries",
-  "Supabase-ready architecture",
-  "Mobile-first design system",
+  "Supabase Auth login",
+  "Protected route shells",
+  "Role-aware navigation",
+  "Permission utilities",
 ];
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const profile = await getOptionalCurrentProfile();
+  const portalPath = profile ? getPostLoginPath(profile.roles) : "/login";
+
   return (
     <main className="min-h-screen overflow-hidden bg-background">
       <section className="border-b bg-card">
@@ -28,8 +36,10 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              Sprint 00
+            <Button asChild variant="outline" size="sm">
+              <Link href={portalPath}>
+                {profile ? "Open portal" : "Sign in"}
+              </Link>
             </Button>
           </nav>
 
@@ -37,7 +47,7 @@ export default function HomePage() {
             <div className="max-w-3xl">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-sm text-muted-foreground">
                 <Sparkles className="h-4 w-4 text-accent" aria-hidden="true" />
-                Foundation in progress
+                Authentication foundation ready
               </div>
               <h1 className="text-4xl font-bold tracking-normal text-foreground sm:text-5xl lg:text-6xl">
                 A calm, secure foundation for a reusable community platform.
@@ -45,16 +55,18 @@ export default function HomePage() {
               <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
                 Hugie Connect is being built as a production-grade SaaS
                 platform for memberships, events, access control, merchandise,
-                and administration. Sprint 00 establishes the technical base
-                before any business modules are added.
+                and administration. Sprint 01 adds secure authentication and
+                role-aware access without introducing business modules.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Button size="lg">
-                  View foundation
-                  <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                <Button asChild size="lg">
+                  <Link href={portalPath}>
+                    {profile ? "Continue" : "Sign in"}
+                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </Button>
-                <Button variant="outline" size="lg">
-                  Documentation first
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/forgot-password">Reset password</Link>
                 </Button>
               </div>
             </div>
@@ -65,9 +77,9 @@ export default function HomePage() {
                   <ShieldCheck className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold">Sprint 00 Scope</h2>
+                  <h2 className="text-base font-semibold">Sprint 01 Scope</h2>
                   <p className="text-sm text-muted-foreground">
-                    Architecture only, no feature modules.
+                    Authentication only, no business modules.
                   </p>
                 </div>
               </div>

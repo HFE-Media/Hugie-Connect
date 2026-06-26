@@ -6,9 +6,9 @@ The first implementation is for Hoerskool Hugenote, OHB, and HOK, but the produc
 
 ## Current Status
 
-Current phase: **Sprint 00 - Project Foundation**
+Current phase: **Sprint 01 - Authentication & Users**
 
-Sprint 00 establishes the application foundation only. It does not include memberships, events, tickets, QR codes, gate scanning, merchandise, payments, or reports.
+Sprint 01 establishes authentication, protected route shells, profile foundation, and role-aware permissions only. It does not include memberships, events, tickets, QR codes, gate scanning workflows, merchandise, payments, or reports.
 
 ## Stack
 
@@ -87,7 +87,7 @@ npm run lint        # Run ESLint
 npm run type-check  # Run TypeScript without emitting files
 ```
 
-## Sprint 00 Scope
+## Sprint 01 Scope
 
 Included:
 
@@ -97,14 +97,23 @@ Included:
 - shadcn/ui-compatible component setup
 - Project folder structure
 - Supabase browser/server/middleware client setup
-- Authentication session refresh foundation
+- Login page
+- Logout
+- Forgot password page
+- Password reset flow foundation
+- Authentication session handling
+- Protected route structure
+- Auth guard
+- Role and permission utility foundation
+- User profile foundation
+- Auth-aware navigation states
 - Theme provider
 - Root layout
 - Environment variable validation
 - Logger utility
 - Error handling utility and route boundary
 - Path aliases
-- Basic landing page
+- Basic auth-aware landing page
 
 Excluded until later milestones:
 
