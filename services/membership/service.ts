@@ -1,14 +1,28 @@
+import "server-only";
+
+import { randomBytes } from "node:crypto";
+
 import { AppError } from "@/lib/errors";
 import {
+  approveMembershipApplicationSchema,
   createMembershipApplicationSchema,
   listMembershipApplicationsSchema,
+  updateMembershipApplicationReviewSchema,
+  type ApproveMembershipApplicationValues,
   type CreateMembershipApplicationValues,
   type ListMembershipApplicationsValues,
+  type UpdateMembershipApplicationReviewValues,
 } from "@/features/membership/schemas";
 import {
   createMembershipRepository,
+  mapApprovedMembershipApplicationResult,
   type MembershipRepositoryClient,
 } from "@/services/membership/repository";
+import { createSupabaseAdminClient } from "@/services/supabase/admin";
+
+function createMembershipCardToken() {
+  return randomBytes(32).toString("hex");
+}
 
 export function createMembershipService(client: MembershipRepositoryClient) {
   const repository = createMembershipRepository(client);
@@ -34,6 +48,29 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       input: CreateMembershipApplicationValues,
     ) {
       const values = createMembershipApplicationSchema.parse(input);
+      const { data: membershipType, error: membershipTypeError } =
+        await repository.getMembershipTypeById({
+          id: values.membershipTypeId,
+          organisationId: values.organisationId,
+        });
+
+      if (membershipTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be checked.",
+          500,
+          membershipTypeError,
+        );
+      }
+
+      if (!membershipType || membershipType.status !== "active") {
+        throw new AppError(
+          "BAD_REQUEST",
+          "Selected membership type is not available.",
+          400,
+        );
+      }
+
       const { data, error } =
         await repository.createMembershipApplication(values);
 
@@ -43,6 +80,27 @@ export function createMembershipService(client: MembershipRepositoryClient) {
           "Membership application could not be created.",
           500,
           error,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: null,
+        action: "membership_application_created",
+        entityType: "membership_application",
+        entityId: data.id,
+        newValues: {
+          status: data.status,
+          membership_type_id: data.membership_type_id,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application audit log could not be created.",
+          500,
+          auditError,
         );
       }
 
@@ -67,5 +125,146 @@ export function createMembershipService(client: MembershipRepositoryClient) {
 
       return data;
     },
+
+    async updateMembershipApplicationReview(
+      input: UpdateMembershipApplicationReviewValues,
+    ) {
+      const values = updateMembershipApplicationReviewSchema.parse(input);
+      const { data: existingApplication, error: existingError } =
+        await repository.getMembershipApplicationById({
+          id: values.applicationId,
+          organisationId: values.organisationId,
+        });
+
+      if (existingError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be loaded.",
+          500,
+          existingError,
+        );
+      }
+
+      if (!existingApplication) {
+        throw new AppError(
+          "NOT_FOUND",
+          "Membership application was not found.",
+          404,
+        );
+      }
+
+      if (existingApplication.status !== "pending") {
+        throw new AppError(
+          "CONFLICT",
+          "Only pending membership applications can be reviewed.",
+          409,
+        );
+      }
+
+      const { data, error } =
+        await repository.updateMembershipApplicationReview(values);
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application review could not be saved.",
+          500,
+          error,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: `membership_application_${values.status}`,
+        entityType: "membership_application",
+        entityId: values.applicationId,
+        oldValues: {
+          status: existingApplication.status,
+          rejection_reason: existingApplication.rejection_reason,
+        },
+        newValues: {
+          status: data.status,
+          rejection_reason: data.rejection_reason,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application review audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return data;
+    },
+
+    async approveMembershipApplication(
+      input: ApproveMembershipApplicationValues,
+    ) {
+      const values = approveMembershipApplicationSchema.parse(input);
+      const { data: existingApplication, error: existingError } =
+        await repository.getMembershipApplicationById({
+          id: values.applicationId,
+          organisationId: values.organisationId,
+        });
+
+      if (existingError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be loaded.",
+          500,
+          existingError,
+        );
+      }
+
+      if (!existingApplication) {
+        throw new AppError(
+          "NOT_FOUND",
+          "Membership application was not found.",
+          404,
+        );
+      }
+
+      if (existingApplication.status !== "pending") {
+        throw new AppError(
+          "CONFLICT",
+          "Only pending membership applications can be approved.",
+          409,
+        );
+      }
+
+      const { data, error } = await repository.approveMembershipApplication({
+        ...values,
+        qrToken: createMembershipCardToken(),
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be approved.",
+          500,
+          error,
+        );
+      }
+
+      const result = mapApprovedMembershipApplicationResult(data);
+
+      if (!result) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership approval did not return created records.",
+          500,
+        );
+      }
+
+      return result;
+    },
   };
+}
+
+export function createMembershipAdminService() {
+  return createMembershipService(createSupabaseAdminClient());
 }

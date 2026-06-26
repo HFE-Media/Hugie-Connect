@@ -39,3 +39,27 @@ export type CreateMembershipApplicationInput = {
   mobile?: string | null;
   applicationData?: Record<string, unknown>;
 };
+
+export type UpdateMembershipApplicationReviewInput = {
+  organisationId: string;
+  applicationId: string;
+  reviewedByUserId: string;
+  status: "rejected" | "cancelled";
+  rejectionReason?: string | null;
+};
+
+export type ApproveMembershipApplicationInput = {
+  organisationId: string;
+  applicationId: string;
+  reviewedByUserId: string;
+  memberNumber: string;
+  periodStartsAt: Date;
+  periodEndsAt: Date;
+};
+
+export type ApprovedMembershipApplicationResult = {
+  applicationId: string;
+  memberId: string;
+  membershipPeriodId: string;
+  membershipCardId: string;
+};

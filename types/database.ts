@@ -308,6 +308,23 @@ export type Database = {
         Args: { target_organisation_id: string };
         Returns: boolean;
       };
+      approve_membership_application: {
+        Args: {
+          p_application_id: string;
+          p_organisation_id: string;
+          p_reviewed_by: string;
+          p_member_number: string;
+          p_period_starts_at: string;
+          p_period_ends_at: string;
+          p_qr_token?: string | null;
+        };
+        Returns: {
+          application_id: string;
+          member_id: string;
+          membership_period_id: string;
+          membership_card_id: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
