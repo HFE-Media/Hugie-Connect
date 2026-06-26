@@ -9,6 +9,7 @@ export const APP_ROLES = [
   "gate_staff",
   "member",
   "public_user",
+  "guest_user",
 ] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];

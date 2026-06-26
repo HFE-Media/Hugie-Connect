@@ -17,6 +17,7 @@ const rolePermissions = {
   gate_staff: ["portal:view", "profile:view_own", "scanner:shell:view"],
   member: ["portal:view", "profile:view_own"],
   public_user: ["portal:view", "profile:view_own"],
+  guest_user: [],
 } satisfies Record<AppRole, Permission[]>;
 
 export function hasRole(roles: AppRole[], allowedRoles: AppRole[]) {

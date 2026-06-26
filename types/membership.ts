@@ -1,0 +1,41 @@
+import type { Database } from "@/types/database";
+
+export type MembershipTypeStatus = "active" | "inactive" | "archived";
+export type MembershipBillingCycle = "once_off" | "monthly" | "annual";
+export type MembershipApplicationStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled";
+export type MemberStatus =
+  | "pending"
+  | "active"
+  | "suspended"
+  | "expired"
+  | "cancelled";
+export type MembershipPeriodStatus =
+  | "pending"
+  | "active"
+  | "expired"
+  | "cancelled";
+export type MembershipCardStatus = "active" | "revoked" | "expired";
+
+export type MembershipType =
+  Database["public"]["Tables"]["membership_types"]["Row"];
+export type MembershipApplication =
+  Database["public"]["Tables"]["membership_applications"]["Row"];
+export type Member = Database["public"]["Tables"]["members"]["Row"];
+export type MembershipPeriod =
+  Database["public"]["Tables"]["membership_periods"]["Row"];
+export type MembershipCard =
+  Database["public"]["Tables"]["membership_cards"]["Row"];
+
+export type CreateMembershipApplicationInput = {
+  organisationId: string;
+  membershipTypeId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobile?: string | null;
+  applicationData?: Record<string, unknown>;
+};
