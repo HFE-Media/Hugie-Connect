@@ -1,194 +1,122 @@
 # Hugie Connect
 
-<p align="center">
-  <strong>A modern membership, event, ticketing and community management platform.</strong>
-</p>
+Hugie Connect is a modern community management platform for memberships, events, ticketing, access control, merchandise, reporting, and administration.
 
----
+The first implementation is for Hoerskool Hugenote, OHB, and HOK, but the product is being built as an organisation-aware SaaS platform that can later support other schools, clubs, and community organisations.
 
-## Overview
+## Current Status
 
-Hugie Connect is a professional SaaS platform designed to help schools, clubs and community organisations manage memberships, events, ticketing, gate access, merchandise and member benefits from a single system.
+Current phase: **Sprint 00 - Project Foundation**
 
-The first deployment is being developed for **Hoërskool Hugenote** to support:
+Sprint 00 establishes the application foundation only. It does not include memberships, events, tickets, QR codes, gate scanning, merchandise, payments, or reports.
 
-* OHB (Oud Hugie Bond)
-* HOK (Hugie Ondersteuners Klub)
+## Stack
 
-The platform itself is designed to be organisation-agnostic so that future schools, clubs and associations can use the same software without requiring custom development.
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui conventions
+- Supabase Auth foundation
+- Supabase SSR helpers
+- next-themes
+- Zod environment validation
 
----
-
-## Vision
-
-Build a modern platform that replaces fragmented spreadsheets, paper membership cards and disconnected event systems with one secure, scalable and user-friendly solution.
-
----
-
-## Core Features
-
-### Membership Management
-
-* Online applications
-* Membership approval workflow
-* Membership renewals
-* Active and expired membership tracking
-
-### Digital Membership Cards
-
-* Mobile-friendly digital cards
-* Secure QR codes
-* Real-time validation
-
-### Events
-
-* Event management
-* Public and member events
-* Capacity management
-
-### Ticketing
-
-* Public ticket sales
-* Member discounts
-* Free member tickets
-* QR tickets
-
-### Gate Management
-
-* QR scanning
-* Walk-in ticket sales
-* Duplicate ticket detection
-* Attendance tracking
-
-### Merchandise
-
-* Member-only merchandise
-* Public merchandise
-* Click & Collect
-* Order management
-
-### Administration
-
-* User roles
-* Reporting
-* Audit logs
-* Organisation settings
-
----
-
-## Technology Stack
-
-### Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* shadcn/ui
-
-### Backend
-
-* Supabase
-* PostgreSQL
-* Supabase Auth
-* Supabase Storage
-
-### Hosting
-
-* Vercel
-* Supabase Cloud
-
----
-
-## Documentation
-
-Complete project documentation is available in the `/docs` directory.
-
-Key documents include:
-
-* Product Principles
-* Project Vision
-* Business Requirements
-* User Roles
-* User Flows
-* Database Schema
-* Functional Specification
-* API Architecture
-* Development Roadmap
-* Design System
-
----
-
-## Development Status
-
-Current Phase:
-
-**Planning & Project Foundation**
-
-Current Sprint:
-
-**Sprint 00 – Foundation**
-
-Status:
-
-🟢 In Development
-
----
-
-## Project Goals
-
-* Modular architecture
-* Multi-organisation support
-* Mobile-first experience
-* Secure authentication
-* Role-based access control
-* Scalable database design
-* Premium SaaS user experience
-
----
-
-## Future Roadmap
-
-* Apple Wallet & Google Wallet integration
-* WhatsApp notifications
-* Multi-school deployments
-* Volunteer management
-* Donations & sponsorships
-* Loyalty programme
-* Offline gate scanning
-
----
-
-## Repository Structure
+## Project Structure
 
 ```text
-docs/               Project documentation
-app/                Next.js application
-components/         Reusable UI components
-features/           Feature modules
-services/           Business logic
-lib/                Shared libraries
-hooks/              React hooks
-types/              TypeScript definitions
-utils/              Utility functions
-supabase/           Database and Supabase configuration
-public/             Static assets
+app/                Next.js App Router routes and layouts
+components/         Reusable UI and provider components
+features/           Future feature modules
+hooks/              Shared React hooks
+lib/                Shared utilities, env validation, logging, errors
+services/           External service clients and service boundaries
+styles/             Shared style assets
+supabase/           Future Supabase schema and migration assets
+types/              Shared TypeScript types
+utils/              Future pure utility modules
+docs/               Source-of-truth project documentation
 ```
 
----
+## Getting Started
 
-## Development Principles
+Install dependencies:
 
-* Build a platform, not a one-off solution.
-* Prefer configuration over hardcoded logic.
-* Keep business logic out of UI components.
-* Build reusable modules.
-* Maintain high code quality.
-* Prioritise security and scalability.
-* Follow the documentation before writing code.
+```bash
+npm install
+```
 
----
+Create a local environment file:
 
-## Licence
+```bash
+cp .env.example .env.local
+```
 
-This project is licensed under the MIT License.
+Fill in the required Supabase values, then run the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Environment Variables
+
+Required for Supabase-backed runtime paths:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+Optional server-only key for future trusted backend operations:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+Never expose the service role key to browser code.
+
+## Available Scripts
+
+```bash
+npm run dev         # Start local development server
+npm run build       # Create production build
+npm run start       # Start production server after build
+npm run lint        # Run ESLint
+npm run type-check  # Run TypeScript without emitting files
+```
+
+## Sprint 00 Scope
+
+Included:
+
+- Next.js App Router
+- TypeScript strict mode
+- Tailwind CSS
+- shadcn/ui-compatible component setup
+- Project folder structure
+- Supabase browser/server/middleware client setup
+- Authentication session refresh foundation
+- Theme provider
+- Root layout
+- Environment variable validation
+- Logger utility
+- Error handling utility and route boundary
+- Path aliases
+- Basic landing page
+
+Excluded until later milestones:
+
+- Memberships
+- Events
+- Tickets
+- QR codes
+- Gate scanner
+- Merchandise
+- Payments
+- Reports
+
+## Development Principle
+
+Documentation in `/docs` is the source of truth. Before building any future milestone, review the relevant documentation and keep implementation aligned with the roadmap.
