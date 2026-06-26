@@ -677,24 +677,75 @@ RLS policies must ensure:
 
 ---
 
-# 14. Future Database Considerations
+# 14. Additional Tables Before Implementation
 
-Future tables may include:
+The following tables should be included before Version 1 database implementation based on the engineering review.
 
-* partner_businesses
-* partner_offers
-* loyalty_points
-* wallet_passes
-* donations
-* sponsorships
-* family_memberships
-* event_seating
-* waiting_lists
-* volunteer_shifts
-* organisation_settings
+---
 
-These are intentionally excluded from Version 1 unless required.
+## membership_periods
 
+Tracks every membership period separately.
+
+Purpose:
+
+- Renewal history
+- Membership lifecycle
+- Historical reporting
+- Future recurring billing
+
+Example fields:
+
+- id
+- member_id
+- starts_at
+- ends_at
+- status
+- payment_id
+- created_at
+
+---
+
+## gate_assignments
+
+Assigns Gate Staff to specific events.
+
+Purpose:
+
+- Restrict Gate Staff access
+- Simplify scanner portal
+- Improve security
+
+Example fields:
+
+- id
+- event_id
+- user_id
+- assigned_by
+- created_at
+
+---
+
+## benefit_usage
+
+Tracks when members redeem benefits.
+
+Purpose:
+
+- Reporting
+- Benefit limits
+- Auditing
+- Future loyalty features
+
+Example fields:
+
+- id
+- member_id
+- benefit_id
+- event_id (nullable)
+- product_id (nullable)
+- redeemed_at
+- redeemed_by
 ---
 
 # 15. Acceptance Criteria

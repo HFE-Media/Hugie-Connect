@@ -2,7 +2,7 @@
 
 **Project:** Hugie Connect
 
-**Version:** 0.1
+**Version:** 0.2
 
 **Status:** Draft
 
@@ -66,22 +66,22 @@ Events
 ↓
 
 Milestone 6
-Ticketing
+Payments Foundation
 
 ↓
 
 Milestone 7
-Gate Scanner
+Ticketing
 
 ↓
 
 Milestone 8
-Merchandise
+Gate Scanner
 
 ↓
 
 Milestone 9
-Payments
+Merchandise
 
 ↓
 
@@ -234,101 +234,115 @@ Public can view published events.
 
 ---
 
-# 9. Milestone 6 – Ticketing
+# 9. Milestone 6 – Payments Foundation
 
 ## Goal
 
-Allow ticket sales.
+Establish the payment architecture required for memberships, ticketing and merchandise without integrating a specific payment provider yet.
+
+## Deliverables
+
+* Payments table
+* Payment service structure
+* Payment statuses
+* Manual payment recording
+* Payment references
+* Payment abstraction layer
+* Linking payments to memberships, tickets and orders
+
+## Acceptance Criteria
+
+Payments can be recorded.
+
+Payments can be linked to memberships, tickets and merchandise.
+
+Manual payments are supported.
+
+The platform is ready for future integration with providers such as PayFast, Peach Payments or Stripe.
+
+---
+
+# 10. Milestone 7 – Ticketing
+
+## Goal
+
+Allow ticket sales for public users and members.
 
 ## Deliverables
 
 * Ticket types
-* Public tickets
-* Member tickets
-* Discount logic
-* Free tickets
-* Ticket QR
+* Public ticket sales
+* Member ticket sales
+* Member discounts
+* Complimentary tickets
+* Ticket QR generation
 * My Tickets
 
 ## Acceptance Criteria
 
-Tickets generated correctly.
+Tickets generate successfully.
 
-Discounts applied automatically.
+Member discounts are applied automatically.
 
-QR valid.
+Ticket QR codes validate successfully.
+
+Payments link correctly to tickets.
 
 ---
 
-# 10. Milestone 7 – Gate Scanner
+# 11. Milestone 8 – Gate Scanner
 
 ## Goal
 
-Simple gate management.
+Provide a fast, secure and simple gate management experience.
 
 ## Deliverables
 
 * Scanner portal
 * Ticket scanner
 * Membership scanner
-* Walk-in sales
+* Walk-in ticket sales
 * Scan logs
+* Gate assignments
 
 ## Acceptance Criteria
 
-Tickets validated.
+Tickets validate correctly.
 
-Walk-in sales recorded.
+Membership cards validate correctly.
 
-Duplicate scans detected.
+Walk-in sales are recorded.
+
+Duplicate scans are prevented.
+
+Gate Staff only access assigned events.
 
 ---
 
-# 11. Milestone 8 – Merchandise
+# 12. Milestone 9 – Merchandise
 
 ## Goal
 
-Member merchandise.
+Provide member and public merchandise sales.
 
 ## Deliverables
 
 * Products
 * Categories
-* Restrictions
+* Member restrictions
 * Orders
 * Click & Collect
+* Member-only merchandise
 
 ## Acceptance Criteria
 
-Member restrictions work.
+Member restrictions work correctly.
 
-Orders created.
+Orders are created successfully.
 
-Collection tracked.
+Collection status is tracked.
 
----
-
-# 12. Milestone 9 – Payments
-
-## Goal
-
-Central payment management.
-
-## Deliverables
-
-* Membership payments
-* Ticket payments
-* Merchandise payments
-* Payment history
-* Refund support
-
-## Acceptance Criteria
-
-Payments linked correctly.
-
-Statuses update.
-
-Reports accurate.
+Payments link correctly to merchandise orders.
 
 ---
 
