@@ -6,6 +6,7 @@ import type {
   MembershipPeriodStatus,
 } from "@/types/membership";
 import { DigitalMembershipCard } from "@/components/membership/digital-membership-card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type MemberMembershipSummaryCardProps = {
@@ -199,7 +200,11 @@ export function MemberMembershipSummaryCard({
   );
 }
 
-export function EmptyMembershipState() {
+export function EmptyMembershipState({
+  linkAction,
+}: {
+  linkAction?: () => Promise<void>;
+}) {
   return (
     <section className="rounded-xl border bg-card p-6 text-center shadow-soft">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -211,6 +216,11 @@ export function EmptyMembershipState() {
         yet. Once your membership is approved and connected, it will appear
         here.
       </p>
+      {linkAction ? (
+        <form action={linkAction} className="mt-5">
+          <Button type="submit">Link my membership</Button>
+        </form>
+      ) : null}
     </section>
   );
 }

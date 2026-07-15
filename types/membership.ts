@@ -41,6 +41,12 @@ export type MemberMembershipSummary = {
   currentPeriod: MembershipPeriod | null;
 };
 
+export type LinkOwnMembershipResult =
+  | { status: "linked"; memberId: string }
+  | { status: "already_linked"; memberId: string }
+  | { status: "no_match" }
+  | { status: "multiple_matches" };
+
 export type CreateMembershipApplicationInput = {
   organisationId: string;
   membershipTypeId: string;

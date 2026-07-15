@@ -21,6 +21,48 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .maybeSingle();
     },
 
+    async listUsersByEmail(email: string) {
+      return client
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .order("created_at", { ascending: true });
+    },
+
+    async createUser(input: {
+      authUserId: string;
+      organisationId: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      email: string;
+    }) {
+      return client
+        .from("users")
+        .insert({
+          auth_user_id: input.authUserId,
+          organisation_id: input.organisationId,
+          first_name: input.firstName ?? null,
+          last_name: input.lastName ?? null,
+          email: input.email,
+          status: "active",
+        })
+        .select("*")
+        .single();
+    },
+
+    async updateUserOrganisation(params: {
+      userId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("users")
+        .update({ organisation_id: params.organisationId })
+        .eq("id", params.userId)
+        .is("organisation_id", null)
+        .select("*")
+        .single();
+    },
+
     async listActiveOrganisations() {
       return client
         .from("organisations")
@@ -84,6 +126,33 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .eq("id", params.id)
         .eq("organisation_id", params.organisationId)
         .maybeSingle();
+    },
+
+    async listApprovedApplicationsByEmail(params: {
+      email: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("membership_applications")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .eq("status", "approved")
+        .eq("email", params.email)
+        .order("reviewed_at", { ascending: false });
+    },
+
+    async listUnlinkedMembersByApplicationIds(params: {
+      applicationIds: string[];
+      organisationId: string;
+    }) {
+      return client
+        .from("members")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .is("user_id", null)
+        .in("status", ["active", "pending"])
+        .in("membership_application_id", params.applicationIds)
+        .order("approved_at", { ascending: false });
     },
 
     async listMembershipApplications(params: {
@@ -174,6 +243,21 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .eq("user_id", params.userId)
         .eq("organisation_id", params.organisationId)
         .order("created_at", { ascending: false });
+    },
+
+    async linkMemberToUser(params: {
+      memberId: string;
+      userId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("members")
+        .update({ user_id: params.userId })
+        .eq("id", params.memberId)
+        .eq("organisation_id", params.organisationId)
+        .is("user_id", null)
+        .select("*")
+        .single();
     },
 
     async listOwnVisibleMembers(params: {

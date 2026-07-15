@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createMembershipAdminService } from "@/services/membership/service";
 import type { MembershipApplicationActionState } from "@/features/membership/state";
+import { requirePermission } from "@/services/auth/server";
 
 const publicMembershipApplicationFormSchema = z.object({
   organisationId: z.string().uuid(),
@@ -81,4 +83,26 @@ export async function submitMembershipApplicationAction(
   }
 
   redirect("/membership/apply/success");
+}
+
+export async function linkOwnMembershipAction() {
+  const profile = await requirePermission("membership:view_own");
+  const membershipService = createMembershipAdminService();
+
+  let linkStatus;
+
+  try {
+    const result = await membershipService.linkOwnMembershipByEmail({
+      authUserId: profile.id,
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+    });
+    linkStatus = result.status;
+  } catch {
+    redirect("/portal/membership?link=error");
+  }
+
+  revalidatePath("/portal/membership");
+  redirect(`/portal/membership?link=${linkStatus}`);
 }
