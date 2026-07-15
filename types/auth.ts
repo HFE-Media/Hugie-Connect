@@ -18,6 +18,7 @@ export type Permission =
   | "portal:view"
   | "profile:view_own"
   | "admin:shell:view"
+  | "membership:applications:manage"
   | "scanner:shell:view"
   | "users:roles:manage";
 

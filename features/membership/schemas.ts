@@ -42,6 +42,14 @@ export const listMembershipApplicationsSchema = z.object({
   status: membershipApplicationStatusSchema.optional(),
 });
 
+export const listAdminMembershipApplicationsSchema = z.object({
+  organisationId: z.string().uuid(),
+  status: membershipApplicationStatusSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 export const updateMembershipApplicationReviewSchema = z
   .object({
     organisationId: z.string().uuid(),
@@ -85,6 +93,10 @@ export type CreateMembershipApplicationValues = z.infer<
 
 export type ListMembershipApplicationsValues = z.infer<
   typeof listMembershipApplicationsSchema
+>;
+
+export type ListAdminMembershipApplicationsValues = z.infer<
+  typeof listAdminMembershipApplicationsSchema
 >;
 
 export type UpdateMembershipApplicationReviewValues = z.infer<

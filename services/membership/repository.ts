@@ -21,6 +21,14 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .order("created_at", { ascending: true });
     },
 
+    async getUserByAuthUserId(authUserId: string) {
+      return client
+        .from("users")
+        .select("*")
+        .eq("auth_user_id", authUserId)
+        .maybeSingle();
+    },
+
     async getActiveOrganisationById(id: string) {
       return client
         .from("organisations")
@@ -93,6 +101,70 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
       }
 
       return query;
+    },
+
+    async listMembershipApplicationsForAdmin(params: {
+      organisationId: string;
+      status?: MembershipApplicationStatus;
+      search?: string;
+      page: number;
+      pageSize: number;
+    }) {
+      const from = (params.page - 1) * params.pageSize;
+      const to = from + params.pageSize - 1;
+      let query = client
+        .from("membership_applications")
+        .select("*", { count: "exact" })
+        .eq("organisation_id", params.organisationId)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (params.status) {
+        query = query.eq("status", params.status);
+      }
+
+      if (params.search) {
+        const searchTerms = params.search
+          .replaceAll(",", " ")
+          .split(/\s+/)
+          .map((term) => term.trim())
+          .filter(Boolean);
+
+        searchTerms.forEach((term) => {
+          query = query.or(
+            `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`,
+          );
+        });
+      }
+
+      return query;
+    },
+
+    async listMembershipTypesByIds(params: {
+      organisationId: string;
+      ids: string[];
+    }) {
+      if (params.ids.length === 0) {
+        return { data: [], error: null };
+      }
+
+      return client
+        .from("membership_types")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .in("id", params.ids);
+    },
+
+    async listUsersByIds(params: { organisationId: string; ids: string[] }) {
+      if (params.ids.length === 0) {
+        return { data: [], error: null };
+      }
+
+      return client
+        .from("users")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .in("id", params.ids);
     },
 
     async updateMembershipApplicationReview(

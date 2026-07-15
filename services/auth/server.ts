@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import type { Permission } from "@/types/auth";
 import { createSupabaseServerClient } from "@/services/supabase/server";
 import { mapUserToAuthProfile } from "@/services/auth/profile";
+import { createAuthRepository } from "@/services/auth/repository";
 
 export async function getCurrentProfile() {
   let user;
@@ -24,7 +25,40 @@ export async function getCurrentProfile() {
     return null;
   }
 
-  return mapUserToAuthProfile(user);
+  const repository = createAuthRepository(await createSupabaseServerClient());
+  const { data: appUser, error: appUserError } =
+    await repository.getUserByAuthUserId(user.id);
+
+  if (appUserError) {
+    logger.warn("Unable to load app user profile", {
+      error: appUserError.message,
+      authUserId: user.id,
+    });
+
+    return mapUserToAuthProfile(user);
+  }
+
+  if (!appUser) {
+    return mapUserToAuthProfile(user);
+  }
+
+  const { data: roleNames, error: roleError } =
+    await repository.listRoleNamesForUser({
+      userId: appUser.id,
+      organisationId: appUser.organisation_id,
+    });
+
+  if (roleError) {
+    logger.warn("Unable to load app user roles", {
+      error: roleError.message,
+      authUserId: user.id,
+      appUserId: appUser.id,
+    });
+
+    return mapUserToAuthProfile(user, appUser);
+  }
+
+  return mapUserToAuthProfile(user, appUser, roleNames ?? []);
 }
 
 export async function getOptionalCurrentProfile() {

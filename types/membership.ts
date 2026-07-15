@@ -30,6 +30,26 @@ export type MembershipPeriod =
 export type MembershipCard =
   Database["public"]["Tables"]["membership_cards"]["Row"];
 
+export type MembershipApplicationAdminSummary = MembershipApplication & {
+  membershipTypeName: string;
+  membershipTypeCode: string;
+  reviewedByName: string | null;
+  reviewedByEmail: string | null;
+};
+
+export type MembershipApplicationAdminDetail =
+  MembershipApplicationAdminSummary & {
+    membershipTypeDescription: string | null;
+  };
+
+export type MembershipApplicationsAdminPage = {
+  applications: MembershipApplicationAdminSummary[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+};
+
 export type CreateMembershipApplicationInput = {
   organisationId: string;
   membershipTypeId: string;
