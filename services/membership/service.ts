@@ -23,7 +23,9 @@ import type {
   LinkOwnMembershipResult,
   MembershipCard,
   MembershipCardDisplay,
+  MembershipVerificationResult,
   MemberMembershipSummary,
+  MemberStatus,
   MembershipPeriod,
   MembershipUser,
 } from "@/types/membership";
@@ -74,6 +76,74 @@ function normaliseNullableString(value?: string | null) {
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : null;
+}
+
+function parseMembershipQrPayload(payload: string) {
+  const trimmed = payload.trim();
+  const prefix = "membership:";
+
+  if (!trimmed.startsWith(prefix)) {
+    return null;
+  }
+
+  const token = trimmed.slice(prefix.length).trim();
+
+  if (!token || token.length > 256 || /\s/.test(token)) {
+    return null;
+  }
+
+  return token;
+}
+
+function hasActivePeriod(periods: MembershipPeriod[], now: Date) {
+  return periods.some((period) => {
+    const startsAt = new Date(period.starts_at);
+    const endsAt = new Date(period.ends_at);
+
+    return period.status === "active" && startsAt <= now && endsAt > now;
+  });
+}
+
+function isExpired(value: string | null, now: Date) {
+  return value ? new Date(value) <= now : false;
+}
+
+function getVerificationMemberName(params: {
+  applicationFirstName?: string | null;
+  applicationLastName?: string | null;
+  userFirstName?: string | null;
+  userLastName?: string | null;
+}) {
+  const applicationName = [
+    params.applicationFirstName,
+    params.applicationLastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (applicationName) {
+    return applicationName;
+  }
+
+  const userName = [params.userFirstName, params.userLastName]
+    .filter(Boolean)
+    .join(" ");
+
+  return userName || "Member";
+}
+
+function createVerificationResult(input: {
+  tone: MembershipVerificationResult["tone"];
+  title: string;
+  message: string;
+  memberName?: string;
+  membershipTypeName?: string;
+  memberNumber?: string;
+  memberStatus?: MemberStatus;
+  expiresAt?: string | null;
+  organisationName?: string;
+}): MembershipVerificationResult {
+  return input;
 }
 
 export function createMembershipService(client: MembershipRepositoryClient) {
@@ -503,6 +573,246 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       }
 
       return { status: "linked", memberId: linkedMember.id };
+    },
+
+    async verifyMembershipQrPayload(input: {
+      payload: string;
+      verifierAuthUserId: string;
+      canVerifyAllOrganisations: boolean;
+    }): Promise<MembershipVerificationResult> {
+      const qrToken = parseMembershipQrPayload(input.payload);
+
+      if (!qrToken) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Invalid QR",
+          message: "This is not a recognised membership QR code.",
+        });
+      }
+
+      const { data: verifier, error: verifierError } =
+        await repository.getUserByAuthUserId(input.verifierAuthUserId);
+
+      if (verifierError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Verifier profile could not be loaded.",
+          500,
+          verifierError,
+        );
+      }
+
+      if (!input.canVerifyAllOrganisations && !verifier?.organisation_id) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Verifier not assigned",
+          message: "This account is not assigned to an organisation.",
+        });
+      }
+
+      const { data: card, error: cardError } =
+        await repository.getMembershipCardByQrToken(qrToken);
+
+      if (cardError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card could not be checked.",
+          500,
+          cardError,
+        );
+      }
+
+      if (!card) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Unknown membership QR",
+          message: "No membership card matched this QR code.",
+        });
+      }
+
+      if (
+        !input.canVerifyAllOrganisations &&
+        verifier?.organisation_id !== card.organisation_id
+      ) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Unknown membership QR",
+          message: "No membership card matched this QR code.",
+        });
+      }
+
+      const { data: member, error: memberError } =
+        await repository.getMemberById({
+          id: card.member_id,
+          organisationId: card.organisation_id,
+        });
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be checked.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!member) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Member missing",
+          message: "This QR code is not linked to a valid member record.",
+        });
+      }
+
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(card.organisation_id);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Organisation inactive",
+          message: "The organisation for this membership is not active.",
+        });
+      }
+
+      const { data: membershipType, error: membershipTypeError } =
+        await repository.getMembershipTypeById({
+          id: member.membership_type_id,
+          organisationId: member.organisation_id,
+        });
+
+      if (membershipTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be checked.",
+          500,
+          membershipTypeError,
+        );
+      }
+
+      if (!membershipType) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Membership type missing",
+          message: "This membership record is incomplete.",
+        });
+      }
+
+      const { data: periods, error: periodsError } =
+        await repository.listMembershipPeriodsByMemberId({
+          memberId: member.id,
+          organisationId: member.organisation_id,
+        });
+
+      if (periodsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership period could not be checked.",
+          500,
+          periodsError,
+        );
+      }
+
+      const { data: user, error: userError } = member.user_id
+        ? await repository.getUserById({
+            id: member.user_id,
+            organisationId: member.organisation_id,
+          })
+        : { data: null, error: null };
+
+      if (userError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member user could not be checked.",
+          500,
+          userError,
+        );
+      }
+
+      const { data: application, error: applicationError } =
+        member.membership_application_id
+          ? await repository.getMembershipApplicationById({
+              id: member.membership_application_id,
+              organisationId: member.organisation_id,
+            })
+          : { data: null, error: null };
+
+      if (applicationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be checked.",
+          500,
+          applicationError,
+        );
+      }
+
+      const memberName = getVerificationMemberName({
+        applicationFirstName: application?.first_name,
+        applicationLastName: application?.last_name,
+        userFirstName: user?.first_name,
+        userLastName: user?.last_name,
+      });
+      const commonResult = {
+        memberName,
+        membershipTypeName: membershipType.name,
+        memberNumber: member.member_number,
+        memberStatus: member.status,
+        expiresAt: member.expires_at,
+        organisationName: organisation.name,
+      };
+      const now = new Date();
+
+      if (card.card_status !== "active") {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Card not active",
+          message: "This membership card is not active.",
+          ...commonResult,
+        });
+      }
+
+      if (member.status !== "active") {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Member not active",
+          message: "This member is not currently active.",
+          ...commonResult,
+        });
+      }
+
+      if (isExpired(member.expires_at, now)) {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Membership expired",
+          message: "This membership has passed its expiry date.",
+          ...commonResult,
+        });
+      }
+
+      if (!hasActivePeriod(periods, now)) {
+        return createVerificationResult({
+          tone: "warning",
+          title: "No active period",
+          message: "This membership does not have an active current period.",
+          ...commonResult,
+        });
+      }
+
+      return createVerificationResult({
+        tone: "valid",
+        title: "Valid membership",
+        message: "This membership QR is active and valid.",
+        ...commonResult,
+      });
     },
 
     async createMembershipApplication(

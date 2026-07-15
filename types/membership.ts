@@ -54,6 +54,20 @@ export type LinkOwnMembershipResult =
   | { status: "no_match" }
   | { status: "multiple_matches" };
 
+export type MembershipVerificationTone = "valid" | "warning" | "invalid";
+
+export type MembershipVerificationResult = {
+  tone: MembershipVerificationTone;
+  title: string;
+  message: string;
+  memberName?: string;
+  membershipTypeName?: string;
+  memberNumber?: string;
+  memberStatus?: MemberStatus;
+  expiresAt?: string | null;
+  organisationName?: string;
+};
+
 export type CreateMembershipApplicationInput = {
   organisationId: string;
   membershipTypeId: string;

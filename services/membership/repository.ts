@@ -29,6 +29,15 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .order("created_at", { ascending: true });
     },
 
+    async getUserById(params: { id: string; organisationId: string }) {
+      return client
+        .from("users")
+        .select("*")
+        .eq("id", params.id)
+        .eq("organisation_id", params.organisationId)
+        .maybeSingle();
+    },
+
     async createUser(input: {
       authUserId: string;
       organisationId: string;
@@ -295,6 +304,14 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .eq("member_id", params.memberId)
         .eq("organisation_id", params.organisationId)
         .order("issued_at", { ascending: false });
+    },
+
+    async getMembershipCardByQrToken(qrToken: string) {
+      return client
+        .from("membership_cards")
+        .select("*")
+        .eq("qr_token", qrToken)
+        .maybeSingle();
     },
   };
 }

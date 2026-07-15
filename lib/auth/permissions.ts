@@ -5,6 +5,7 @@ const rolePermissions = {
     "portal:view",
     "profile:view_own",
     "membership:view_own",
+    "membership:verify",
     "admin:shell:view",
     "scanner:shell:view",
     "users:roles:manage",
@@ -13,6 +14,7 @@ const rolePermissions = {
     "portal:view",
     "profile:view_own",
     "membership:view_own",
+    "membership:verify",
     "admin:shell:view",
   ],
   finance: [
@@ -25,12 +27,14 @@ const rolePermissions = {
     "portal:view",
     "profile:view_own",
     "membership:view_own",
+    "membership:verify",
     "admin:shell:view",
   ],
   hok_admin: [
     "portal:view",
     "profile:view_own",
     "membership:view_own",
+    "membership:verify",
     "admin:shell:view",
   ],
   event_manager: [
@@ -49,6 +53,7 @@ const rolePermissions = {
     "portal:view",
     "profile:view_own",
     "membership:view_own",
+    "membership:verify",
     "scanner:shell:view",
   ],
   member: ["portal:view", "profile:view_own", "membership:view_own"],
