@@ -94,7 +94,8 @@ function getMemberStatusTone(status: MemberStatus) {
 export function MemberMembershipSummaryCard({
   summary,
 }: MemberMembershipSummaryCardProps) {
-  const { member, organisation, membershipType, currentPeriod } = summary;
+  const { member, organisation, membershipType, currentPeriod, membershipCard } =
+    summary;
   const fields = [
     ["Membership type", membershipType.name],
     ["Member number", member.member_number],
@@ -132,6 +133,8 @@ export function MemberMembershipSummaryCard({
             status={member.status}
             joinedAt={member.joined_at}
             expiresAt={member.expires_at}
+            qrValue={membershipCard?.qrValue ?? null}
+            qrStatus={membershipCard?.status ?? "missing"}
           />
         </div>
 

@@ -284,6 +284,18 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .eq("organisation_id", params.organisationId)
         .order("starts_at", { ascending: false });
     },
+
+    async listMembershipCardsByMemberId(params: {
+      memberId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("membership_cards")
+        .select("*")
+        .eq("member_id", params.memberId)
+        .eq("organisation_id", params.organisationId)
+        .order("issued_at", { ascending: false });
+    },
   };
 }
 

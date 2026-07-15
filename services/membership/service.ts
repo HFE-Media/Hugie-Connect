@@ -21,6 +21,8 @@ import {
 import { createSupabaseAdminClient } from "@/services/supabase/admin";
 import type {
   LinkOwnMembershipResult,
+  MembershipCard,
+  MembershipCardDisplay,
   MemberMembershipSummary,
   MembershipPeriod,
   MembershipUser,
@@ -37,6 +39,31 @@ function resolveCurrentMembershipPeriod(periods: MembershipPeriod[]) {
     periods[0] ??
     null
   );
+}
+
+function resolveCurrentMembershipCard(cards: MembershipCard[]) {
+  return (
+    cards.find((card) => card.card_status === "active") ??
+    cards.find((card) => card.card_status === "expired") ??
+    cards.find((card) => card.card_status === "revoked") ??
+    cards[0] ??
+    null
+  );
+}
+
+function mapMembershipCardDisplay(
+  card: MembershipCard | null,
+): MembershipCardDisplay | null {
+  if (!card) {
+    return null;
+  }
+
+  return {
+    status: card.card_status,
+    qrValue:
+      card.card_status === "active" ? `membership:${card.qr_token}` : null,
+    issuedAt: card.issued_at,
+  };
 }
 
 function normaliseEmail(email: string) {
@@ -326,12 +353,30 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         );
       }
 
+      const { data: cards, error: cardsError } =
+        await repository.listMembershipCardsByMemberId({
+          memberId: member.id,
+          organisationId: member.organisation_id,
+        });
+
+      if (cardsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card could not be loaded.",
+          500,
+          cardsError,
+        );
+      }
+
       return {
         member,
         memberUser: appUser,
         organisation,
         membershipType,
         currentPeriod: resolveCurrentMembershipPeriod(periods),
+        membershipCard: mapMembershipCardDisplay(
+          resolveCurrentMembershipCard(cards),
+        ),
       };
     },
 

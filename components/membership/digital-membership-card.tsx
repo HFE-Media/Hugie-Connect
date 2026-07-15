@@ -1,6 +1,7 @@
-import { Building2, QrCode, ShieldCheck } from "lucide-react";
+import { Building2, ShieldCheck } from "lucide-react";
 
-import type { MemberStatus } from "@/types/membership";
+import type { MemberStatus, MembershipCardStatus } from "@/types/membership";
+import { MembershipQrCode } from "@/components/membership/membership-qr-code";
 import { cn } from "@/lib/utils";
 
 export type DigitalMembershipCardProps = {
@@ -12,6 +13,8 @@ export type DigitalMembershipCardProps = {
   status: MemberStatus;
   joinedAt: string | null;
   expiresAt: string | null;
+  qrValue: string | null;
+  qrStatus: MembershipCardStatus | "missing";
   className?: string;
 };
 
@@ -56,6 +59,8 @@ export function DigitalMembershipCard({
   status,
   joinedAt,
   expiresAt,
+  qrValue,
+  qrStatus,
   className,
 }: DigitalMembershipCardProps) {
   return (
@@ -121,17 +126,17 @@ export function DigitalMembershipCard({
             <CardDetail label="Member no." value={memberNumber} />
             <CardDetail label="Joined" value={formatDate(joinedAt)} />
             <CardDetail label="Valid until" value={formatDate(expiresAt)} />
-            <CardDetail label="Verification" value="QR pending" />
+            <CardDetail
+              label="Verification"
+              value={qrStatus === "active" ? "QR active" : "QR unavailable"}
+            />
           </div>
 
-          <div className="rounded-lg bg-white p-3 text-primary shadow-sm">
-            <div className="grid aspect-square place-items-center rounded-md border border-dashed border-primary/25 bg-muted/40">
-              <QrCode className="h-12 w-12 text-primary/45" aria-hidden="true" />
-            </div>
-            <p className="mt-2 text-center text-[11px] font-medium text-primary/65">
-              QR placeholder
-            </p>
-          </div>
+          <MembershipQrCode
+            value={qrValue}
+            status={qrStatus}
+            label={`Membership QR code for ${memberName}`}
+          />
         </div>
 
         <div className="relative mt-5 flex items-center gap-2 text-xs text-primary-foreground/65">

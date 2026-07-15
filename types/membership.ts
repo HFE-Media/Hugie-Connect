@@ -33,12 +33,19 @@ export type MembershipCard =
   Database["public"]["Tables"]["membership_cards"]["Row"];
 export type MembershipUser = Database["public"]["Tables"]["users"]["Row"];
 
+export type MembershipCardDisplay = {
+  status: MembershipCardStatus;
+  qrValue: string | null;
+  issuedAt: string | null;
+};
+
 export type MemberMembershipSummary = {
   member: Member;
   memberUser: MembershipUser;
   organisation: MembershipOrganisation;
   membershipType: MembershipType;
   currentPeriod: MembershipPeriod | null;
+  membershipCard: MembershipCardDisplay | null;
 };
 
 export type LinkOwnMembershipResult =
