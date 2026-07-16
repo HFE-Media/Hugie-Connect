@@ -1,9 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { getPostLoginPath } from "@/lib/auth/permissions";
+import { getServerEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { mapUserToAuthProfile } from "@/services/auth/profile";
 import { createSupabaseServerClient } from "@/services/supabase/server";
@@ -12,6 +13,15 @@ export type AuthActionState = {
   status: "idle" | "success" | "error";
   message: string;
 };
+
+const passwordRecoverySchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Enter the email address linked to your account.")
+    .email("Enter a valid email address."),
+});
 
 function readRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -61,24 +71,42 @@ export async function forgotPasswordAction(
   _state: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const email = readRequiredString(formData, "email");
+  const result = passwordRecoverySchema.safeParse({
+    email: readRequiredString(formData, "email"),
+  });
 
-  if (!email) {
+  if (!result.success) {
     return {
       status: "error",
-      message: "Enter the email address linked to your account.",
+      message:
+        result.error.issues[0]?.message ??
+        "Enter the email address linked to your account.",
     };
   }
 
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin") ?? "http://localhost:3000";
-  const supabase = await createSupabaseServerClient();
+  const env = getServerEnv();
 
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  if (!env.PASSWORD_RESET_REDIRECT_URL) {
+    logger.error("Password reset redirect URL is not configured");
+    return {
+      status: "error",
+      message: "Password recovery is not configured. Please contact support.",
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
+    redirectTo: env.PASSWORD_RESET_REDIRECT_URL,
   });
 
-  logger.info("Password reset requested", { email });
+  if (error) {
+    logger.warn("Password reset request failed", {
+      email: result.data.email,
+      error: error.message,
+    });
+  } else {
+    logger.info("Password reset requested", { email: result.data.email });
+  }
 
   return {
     status: "success",
@@ -109,6 +137,15 @@ export async function resetPasswordAction(
   }
 
   const supabase = await createSupabaseServerClient();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    return {
+      status: "error",
+      message: "Your invite link is invalid or expired. Request a new link.",
+    };
+  }
+
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
@@ -120,8 +157,5 @@ export async function resetPasswordAction(
 
   logger.info("Password reset completed");
 
-  return {
-    status: "success",
-    message: "Your password has been updated. You can continue securely.",
-  };
+  redirect("/portal/membership?password=updated");
 }

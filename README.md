@@ -75,6 +75,22 @@ Optional server-only key for future trusted backend operations:
 SUPABASE_SERVICE_ROLE_KEY
 ```
 
+Required server-only redirect URL for approved member onboarding invitations:
+
+```text
+MEMBER_INVITE_REDIRECT_URL
+```
+
+Use the application password setup callback route for the target environment,
+for example `https://your-domain.example/auth/callback?next=/reset-password`.
+Required server-only redirect URL for existing-user password recovery:
+
+```text
+PASSWORD_RESET_REDIRECT_URL
+```
+
+Use the same callback route for the target environment unless a separate
+recovery destination is introduced later.
 Never expose the service role key to browser code.
 
 ## Available Scripts

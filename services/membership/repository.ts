@@ -77,6 +77,21 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .single();
     },
 
+    async updateUserAuthIdentity(params: {
+      userId: string;
+      authUserId: string;
+      organisationId: string;
+    }) {
+      return client
+        .from("users")
+        .update({ auth_user_id: params.authUserId })
+        .eq("id", params.userId)
+        .eq("organisation_id", params.organisationId)
+        .or(`auth_user_id.is.null,auth_user_id.eq.${params.authUserId}`)
+        .select("*")
+        .single();
+    },
+
     async getActiveOrganisationById(id: string) {
       return client
         .from("organisations")

@@ -17,6 +17,7 @@ export const dynamic = "force-dynamic";
 type MyMembershipPageProps = {
   searchParams?: Promise<{
     link?: string;
+    password?: string;
   }>;
 };
 
@@ -67,6 +68,7 @@ export default async function MyMembershipPage({
   const summary = await membershipService.getOwnMembershipSummary(profile.id);
   const resolvedSearchParams = await searchParams;
   const linkStatus = resolvedSearchParams?.link;
+  const passwordUpdated = resolvedSearchParams?.password === "updated";
   const linkMessage =
     linkStatus && linkStatus in linkMessages
       ? linkMessages[linkStatus as keyof typeof linkMessages]
@@ -95,6 +97,15 @@ export default async function MyMembershipPage({
           role="status"
         >
           {linkMessage.message}
+        </div>
+      ) : null}
+
+      {passwordUpdated ? (
+        <div
+          className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm"
+          role="status"
+        >
+          Your password has been updated. You can now access your membership.
         </div>
       ) : null}
 

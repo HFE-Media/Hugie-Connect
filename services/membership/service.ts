@@ -2,7 +2,10 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
+import type { User } from "@supabase/supabase-js";
+
 import { AppError } from "@/lib/errors";
+import { getServerEnv } from "@/lib/env";
 import {
   approveMembershipApplicationSchema,
   createMembershipApplicationSchema,
@@ -133,6 +136,90 @@ function normaliseNullableString(value?: string | null) {
   const trimmed = value?.trim();
 
   return trimmed ? trimmed : null;
+}
+
+async function findAuthUserByEmail(email: string): Promise<User | null> {
+  const adminClient = createSupabaseAdminClient();
+  let page = 1;
+  const perPage = 100;
+
+  while (page <= 20) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "Member account could not be checked.",
+        500,
+        error,
+      );
+    }
+
+    const match = data.users.find(
+      (user) => normaliseEmail(user.email ?? "") === email,
+    );
+
+    if (match) {
+      return match;
+    }
+
+    if (data.users.length < perPage) {
+      return null;
+    }
+
+    page += 1;
+  }
+
+  throw new AppError(
+    "INTERNAL_ERROR",
+    "Member account lookup returned too many users. Please contact support.",
+    500,
+  );
+}
+
+async function createAuthUserForMember(application: MembershipApplication) {
+  const email = normaliseEmail(application.email);
+  const existingAuthUser = await findAuthUserByEmail(email);
+
+  if (existingAuthUser) {
+    return { authUser: existingAuthUser, created: false };
+  }
+
+  const env = getServerEnv();
+
+  if (!env.MEMBER_INVITE_REDIRECT_URL) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "Member invite redirect URL is not configured.",
+      500,
+    );
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(
+    email,
+    {
+      data: {
+        first_name: application.first_name,
+        last_name: application.last_name,
+      },
+      redirectTo: env.MEMBER_INVITE_REDIRECT_URL,
+    },
+  );
+
+  if (error || !data.user) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "Member invitation could not be created.",
+      500,
+      error,
+    );
+  }
+
+  return { authUser: data.user, created: true };
 }
 
 function parseMembershipQrPayload(payload: string) {
@@ -311,6 +398,172 @@ function enrichRenewalSummary(
 
 export function createMembershipService(client: MembershipRepositoryClient) {
   const repository = createMembershipRepository(client);
+
+  async function ensureApplicationAppUser(params: {
+    application: MembershipApplication;
+    authUserId: string;
+    organisationId: string;
+  }): Promise<MembershipOrganisationUser> {
+    const email = normaliseEmail(params.application.email);
+    const { data: existingByAuthId, error: authLookupError } =
+      await repository.getUserByAuthUserId(params.authUserId);
+
+    if (authLookupError) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "Member profile could not be checked.",
+        500,
+        authLookupError,
+      );
+    }
+
+    if (existingByAuthId) {
+      if (
+        existingByAuthId.organisation_id &&
+        existingByAuthId.organisation_id !== params.organisationId
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "An existing account for this email belongs to another organisation.",
+          409,
+        );
+      }
+
+      if (!existingByAuthId.organisation_id) {
+        const { data: updatedUser, error: updateError } =
+          await repository.updateUserOrganisation({
+            userId: existingByAuthId.id,
+            organisationId: params.organisationId,
+          });
+
+        if (updateError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Member profile could not be assigned to this organisation.",
+            500,
+            updateError,
+          );
+        }
+
+        return { ...updatedUser, organisation_id: params.organisationId };
+      }
+
+      return {
+        ...existingByAuthId,
+        organisation_id: existingByAuthId.organisation_id,
+      };
+    }
+
+    const { data: usersByEmail, error: emailLookupError } =
+      await repository.listUsersByEmail(email);
+
+    if (emailLookupError) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "Member profile could not be matched.",
+        500,
+        emailLookupError,
+      );
+    }
+
+    const matchingUsers = (usersByEmail ?? []).filter(
+      (user) =>
+        user.email === email &&
+        (!user.auth_user_id || user.auth_user_id === params.authUserId),
+    );
+
+    if (matchingUsers.length > 1) {
+      throw new AppError(
+        "CONFLICT",
+        "Multiple member profiles match this email. Please resolve them before approval.",
+        409,
+      );
+    }
+
+    const matchedUser = matchingUsers[0];
+
+    if (matchedUser) {
+      if (
+        matchedUser.organisation_id &&
+        matchedUser.organisation_id !== params.organisationId
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "An existing account for this email belongs to another organisation.",
+          409,
+        );
+      }
+
+      const organisationId =
+        matchedUser.organisation_id ?? params.organisationId;
+      let userWithOrganisation = matchedUser;
+
+      if (!matchedUser.organisation_id) {
+        const { data: updatedUser, error: updateError } =
+          await repository.updateUserOrganisation({
+            userId: matchedUser.id,
+            organisationId,
+          });
+
+        if (updateError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Member profile could not be assigned to this organisation.",
+            500,
+            updateError,
+          );
+        }
+
+        userWithOrganisation = updatedUser;
+      }
+
+      if (!userWithOrganisation) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member profile could not be assigned to this organisation.",
+          500,
+        );
+      }
+
+      const { data: linkedUser, error: linkError } =
+        await repository.updateUserAuthIdentity({
+          userId: userWithOrganisation.id,
+          authUserId: params.authUserId,
+          organisationId,
+        });
+
+      if (linkError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member profile could not be linked to the Auth account.",
+          500,
+          linkError,
+        );
+      }
+
+      return { ...linkedUser, organisation_id: organisationId };
+    }
+
+    const { data: createdUser, error: createError } =
+      await repository.createUser({
+        authUserId: params.authUserId,
+        organisationId: params.organisationId,
+        firstName: normaliseNullableString(params.application.first_name),
+        lastName: normaliseNullableString(params.application.last_name),
+        email,
+      });
+
+    if (createError) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "Member profile could not be created.",
+        500,
+        createError,
+      );
+    }
+
+    return { ...createdUser, organisation_id: params.organisationId };
+  }
 
   return {
     async listActiveOrganisations() {
@@ -2458,6 +2711,14 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         );
       }
 
+      const account = await createAuthUserForMember(existingApplication);
+
+      const appUser = await ensureApplicationAppUser({
+        application: existingApplication,
+        authUserId: account.authUser.id,
+        organisationId: values.organisationId,
+      });
+
       const { data, error } = await repository.approveMembershipApplication({
         ...values,
         qrToken: createMembershipCardToken(),
@@ -2479,6 +2740,80 @@ export function createMembershipService(client: MembershipRepositoryClient) {
           "INTERNAL_ERROR",
           "Membership approval did not return created records.",
           500,
+        );
+      }
+
+      const { data: createdMember, error: memberError } =
+        await repository.getMemberById({
+          id: result.memberId,
+          organisationId: values.organisationId,
+        });
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Approved member could not be loaded for account linking.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!createdMember) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Approved member was not created.",
+          500,
+        );
+      }
+
+      if (createdMember.user_id && createdMember.user_id !== appUser.id) {
+        throw new AppError(
+          "CONFLICT",
+          "Approved member is already linked to another account.",
+          409,
+        );
+      }
+
+      if (!createdMember.user_id) {
+        const { error: linkError } = await repository.linkMemberToUser({
+          memberId: result.memberId,
+          userId: appUser.id,
+          organisationId: values.organisationId,
+        });
+
+        if (linkError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Approved member could not be linked to the Auth account.",
+            500,
+            linkError,
+          );
+        }
+      }
+
+      const { error: accountAuditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: account.created
+          ? "member_account_created"
+          : "member_account_linked",
+        entityType: "member",
+        entityId: result.memberId,
+        newValues: {
+          member_id: result.memberId,
+          auth_user_id: account.authUser.id,
+          app_user_id: appUser.id,
+          reviewed_by: values.reviewedByUserId,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      if (accountAuditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member account audit log could not be created.",
+          500,
+          accountAuditError,
         );
       }
 

@@ -7,6 +7,8 @@ const clientEnvSchema = z.object({
 
 const serverEnvSchema = clientEnvSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  MEMBER_INVITE_REDIRECT_URL: z.string().url().optional(),
+  PASSWORD_RESET_REDIRECT_URL: z.string().url().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -26,6 +28,8 @@ export function getServerEnv(): ServerEnv {
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    MEMBER_INVITE_REDIRECT_URL: process.env.MEMBER_INVITE_REDIRECT_URL,
+    PASSWORD_RESET_REDIRECT_URL: process.env.PASSWORD_RESET_REDIRECT_URL,
   });
 }
 
@@ -35,6 +39,8 @@ export function tryGetServerEnv(): ServerEnv | null {
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    MEMBER_INVITE_REDIRECT_URL: process.env.MEMBER_INVITE_REDIRECT_URL,
+    PASSWORD_RESET_REDIRECT_URL: process.env.PASSWORD_RESET_REDIRECT_URL,
   });
 
   if (!result.success) {
