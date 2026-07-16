@@ -167,6 +167,20 @@ export type RenewMemberInput = {
   notes?: string | null;
 };
 
+export type RevokeMembershipCardInput = {
+  organisationId: string;
+  memberId: string;
+  reviewedByUserId: string;
+  reason: string;
+};
+
+export type ReissueMembershipCardInput = {
+  organisationId: string;
+  memberId: string;
+  reviewedByUserId: string;
+  reason: string;
+};
+
 export type CreateMembershipApplicationInput = {
   organisationId: string;
   membershipTypeId: string;

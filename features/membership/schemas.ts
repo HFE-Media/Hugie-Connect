@@ -108,6 +108,20 @@ export const renewMemberSchema = z
     }
   });
 
+export const revokeMembershipCardSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Enter an internal reason.").max(1000),
+});
+
+export const reissueMembershipCardSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Enter an internal reason.").max(1000),
+});
+
 export const updateMembershipApplicationReviewSchema = z
   .object({
     organisationId: z.string().uuid(),
@@ -166,6 +180,14 @@ export type ListAdminRenewalsValues = z.infer<
 >;
 
 export type RenewMemberValues = z.infer<typeof renewMemberSchema>;
+
+export type RevokeMembershipCardValues = z.infer<
+  typeof revokeMembershipCardSchema
+>;
+
+export type ReissueMembershipCardValues = z.infer<
+  typeof reissueMembershipCardSchema
+>;
 
 export type UpdateMembershipApplicationReviewValues = z.infer<
   typeof updateMembershipApplicationReviewSchema

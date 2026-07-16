@@ -8,7 +8,9 @@ import type {
   MemberAdminStatusFilter,
   MembershipRenewalFilter,
   MembershipApplicationStatus,
+  ReissueMembershipCardInput,
   RenewMemberInput,
+  RevokeMembershipCardInput,
   UpdateMemberStatusInput,
   UpdateMembershipApplicationReviewInput,
 } from "@/types/membership";
@@ -455,6 +457,53 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .select("*")
         .eq("qr_token", qrToken)
         .maybeSingle();
+    },
+
+    async getActiveMembershipCardForMember(params: {
+      organisationId: string;
+      memberId: string;
+    }) {
+      return client
+        .from("membership_cards")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .eq("member_id", params.memberId)
+        .eq("card_status", "active")
+        .order("issued_at", { ascending: false });
+    },
+
+    async revokeActiveMembershipCard(input: RevokeMembershipCardInput & {
+      cardId: string;
+      revokedAt: string;
+    }) {
+      return client
+        .from("membership_cards")
+        .update({
+          card_status: "revoked",
+          revoked_at: input.revokedAt,
+        })
+        .eq("id", input.cardId)
+        .eq("member_id", input.memberId)
+        .eq("organisation_id", input.organisationId)
+        .eq("card_status", "active")
+        .select("*")
+        .single();
+    },
+
+    async createReplacementMembershipCard(input: ReissueMembershipCardInput & {
+      qrToken: string;
+    }) {
+      return client
+        .from("membership_cards")
+        .insert({
+          organisation_id: input.organisationId,
+          member_id: input.memberId,
+          qr_token: input.qrToken,
+          card_status: "active",
+          regenerated_at: new Date().toISOString(),
+        })
+        .select("*")
+        .single();
     },
 
     async linkMemberToUser(params: {

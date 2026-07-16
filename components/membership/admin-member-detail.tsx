@@ -1,13 +1,21 @@
 import type { Json } from "@/types/database";
 import type { MemberAdminDetail } from "@/types/membership";
 import {
+  reissueMembershipCardAdminAction,
+  revokeMembershipCardAdminAction,
+} from "@/features/membership/admin-actions";
+import {
   AdminMembershipCardStatusBadge,
   AdminMembershipPeriodStatusBadge,
   AdminMemberStatusBadge,
 } from "@/components/membership/admin-member-status-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type AdminMemberDetailProps = {
   member: MemberAdminDetail;
+  canManageCards?: boolean;
 };
 
 function formatDate(value?: string | null) {
@@ -49,10 +57,59 @@ function renderAuditValue(value: Json | undefined) {
   return JSON.stringify(value);
 }
 
-export function AdminMemberDetail({ member }: AdminMemberDetailProps) {
-  const currentCard = member.membershipCards[0] ?? null;
+function isCurrentPeriod(value?: string | null) {
+  return value ? new Date(value) > new Date() : true;
+}
+
+function hasActivePeriod(member: MemberAdminDetail) {
+  const now = new Date();
+
+  return member.membershipPeriods.some((period) => {
+    const startsAt = new Date(period.starts_at);
+    const endsAt = new Date(period.ends_at);
+
+    return period.status === "active" && startsAt <= now && endsAt > now;
+  });
+}
+
+function getCardValidityText(member: MemberAdminDetail) {
+  const activeCard = member.membershipCards.find(
+    (card) => card.card_status === "active",
+  );
+
+  if (!activeCard) {
+    return "No active card is available.";
+  }
+
+  if (member.status !== "active") {
+    return "Not valid because the member is not active.";
+  }
+
+  if (!isCurrentPeriod(member.expires_at)) {
+    return "Not valid because the membership is expired.";
+  }
+
+  if (!hasActivePeriod(member)) {
+    return "Not valid because there is no active membership period.";
+  }
+
+  return "QR is currently valid for membership verification.";
+}
+
+export function AdminMemberDetail({
+  member,
+  canManageCards = false,
+}: AdminMemberDetailProps) {
+  const activeCard =
+    member.membershipCards.find((card) => card.card_status === "active") ??
+    null;
+  const latestCard = member.membershipCards[0] ?? null;
   const currentPeriod =
-    member.membershipPeriods.find((period) => period.id) ?? null;
+    member.membershipPeriods.find((period) => period.status === "active") ??
+    member.membershipPeriods[0] ??
+    null;
+  const canRevokeCard = Boolean(activeCard);
+  const canReissueCard = !activeCard && latestCard?.card_status === "revoked";
 
   return (
     <div className="space-y-5">
@@ -129,11 +186,11 @@ export function AdminMemberDetail({ member }: AdminMemberDetailProps) {
               </p>
               <div className="mt-2">
                 <AdminMembershipCardStatusBadge
-                  status={currentCard?.card_status ?? null}
+                  status={activeCard?.card_status ?? latestCard?.card_status ?? null}
                 />
               </div>
               <p className="mt-3 text-sm text-muted-foreground">
-                Issued {formatDate(currentCard?.issued_at)}
+                Issued {formatDate(activeCard?.issued_at ?? latestCard?.issued_at)}
               </p>
             </div>
           </div>
@@ -184,14 +241,107 @@ export function AdminMemberDetail({ member }: AdminMemberDetailProps) {
       </section>
 
       <section className="rounded-2xl border bg-card p-5 shadow-soft">
-        <h2 className="text-base font-semibold">Membership cards</h2>
-        <div className="mt-4 divide-y rounded-xl border">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Membership cards</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Card history is redacted. Raw QR tokens are never shown here.
+            </p>
+          </div>
+          <AdminMembershipCardStatusBadge
+            status={activeCard?.card_status ?? latestCard?.card_status ?? null}
+          />
+        </div>
+
+        <div className="mt-4 rounded-xl border bg-background p-4">
+          <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+            Current active card
+          </p>
+          <p className="mt-2 text-sm font-semibold">
+            {activeCard ? activeCard.id : "No active card"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {getCardValidityText(member)}
+          </p>
+        </div>
+
+        {canManageCards ? (
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <form
+              action={revokeMembershipCardAdminAction}
+              className="rounded-xl border bg-background p-4"
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <h3 className="text-sm font-semibold">Revoke active card</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                The current QR will stop verifying immediately. Member status
+                and membership periods are not changed.
+              </p>
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="revoke-card-reason">
+                  Internal revocation reason
+                </Label>
+                <Input
+                  id="revoke-card-reason"
+                  name="reason"
+                  placeholder="Required audit reason"
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={!canRevokeCard}
+                className="mt-4"
+              >
+                Revoke card
+              </Button>
+            </form>
+
+            <form
+              action={reissueMembershipCardAdminAction}
+              className="rounded-xl border bg-background p-4"
+            >
+              <input type="hidden" name="memberId" value={member.id} />
+              <h3 className="text-sm font-semibold">Issue replacement card</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Creates one new QR token after revocation. The old card remains
+                revoked and visible in history.
+              </p>
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="reissue-card-reason">
+                  Internal replacement reason
+                </Label>
+                <Input
+                  id="reissue-card-reason"
+                  name="reason"
+                  placeholder="Required audit reason"
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={!canReissueCard}
+                className="mt-4"
+              >
+                Issue replacement
+              </Button>
+            </form>
+          </div>
+        ) : null}
+
+        <div className="mt-5 divide-y rounded-xl border">
           {member.membershipCards.length > 0 ? (
             member.membershipCards.map((card) => (
               <div
                 key={card.id}
-                className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto]"
+                className="grid gap-3 p-4 lg:grid-cols-[1.4fr_1fr_1fr_auto]"
               >
+                <span className="break-all text-sm">{card.id}</span>
                 <span className="text-sm">Issued {formatDate(card.issued_at)}</span>
                 <span className="text-sm text-muted-foreground">
                   Revoked {formatDate(card.revoked_at)}

@@ -64,6 +64,11 @@ const renewMemberFormSchema = z
     }
   });
 
+const membershipCardActionFormSchema = z.object({
+  memberId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Enter an internal reason.").max(1000),
+});
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -110,6 +115,96 @@ async function getRenewalAdminContext() {
   const appUser = await service.getAppUserByAuthUserId(profile.id);
 
   return { service, appUser };
+}
+
+async function getCardAdminContext() {
+  const profile = await requirePermission("membership:cards:manage");
+  const service = createMembershipAdminService();
+  const appUser = await service.getAppUserByAuthUserId(profile.id);
+
+  return { service, appUser };
+}
+
+export async function revokeMembershipCardAdminAction(formData: FormData) {
+  const result = membershipCardActionFormSchema.safeParse({
+    memberId: readString(formData, "memberId"),
+    reason: readString(formData, "reason"),
+  });
+
+  if (!result.success) {
+    const memberId = readString(formData, "memberId");
+    const message =
+      result.error.issues[0]?.message ?? "Enter a card revocation reason.";
+    redirect(memberDetailPath(memberId, { error: message }));
+  }
+
+  const { service, appUser } = await getCardAdminContext();
+
+  try {
+    await service.revokeMembershipCard({
+      organisationId: appUser.organisation_id,
+      memberId: result.data.memberId,
+      reviewedByUserId: appUser.id,
+      reason: result.data.reason,
+    });
+
+    revalidatePath(`/admin/membership/members/${result.data.memberId}`);
+    revalidatePath("/admin/membership/members");
+    revalidatePath(`/portal/membership`);
+  } catch (error) {
+    redirect(
+      memberDetailPath(result.data.memberId, {
+        error: getSafeErrorMessage(error),
+      }),
+    );
+  }
+
+  redirect(
+    memberDetailPath(result.data.memberId, {
+      success: "Membership card revoked.",
+    }),
+  );
+}
+
+export async function reissueMembershipCardAdminAction(formData: FormData) {
+  const result = membershipCardActionFormSchema.safeParse({
+    memberId: readString(formData, "memberId"),
+    reason: readString(formData, "reason"),
+  });
+
+  if (!result.success) {
+    const memberId = readString(formData, "memberId");
+    const message =
+      result.error.issues[0]?.message ?? "Enter a card reissue reason.";
+    redirect(memberDetailPath(memberId, { error: message }));
+  }
+
+  const { service, appUser } = await getCardAdminContext();
+
+  try {
+    await service.reissueMembershipCard({
+      organisationId: appUser.organisation_id,
+      memberId: result.data.memberId,
+      reviewedByUserId: appUser.id,
+      reason: result.data.reason,
+    });
+
+    revalidatePath(`/admin/membership/members/${result.data.memberId}`);
+    revalidatePath("/admin/membership/members");
+    revalidatePath(`/portal/membership`);
+  } catch (error) {
+    redirect(
+      memberDetailPath(result.data.memberId, {
+        error: getSafeErrorMessage(error),
+      }),
+    );
+  }
+
+  redirect(
+    memberDetailPath(result.data.memberId, {
+      success: "Replacement membership card issued.",
+    }),
+  );
 }
 
 export async function renewMemberAdminAction(formData: FormData) {

@@ -10,6 +10,8 @@ import {
   listAdminMembersSchema,
   listAdminRenewalsSchema,
   listMembershipApplicationsSchema,
+  reissueMembershipCardSchema,
+  revokeMembershipCardSchema,
   renewMemberSchema,
   updateMemberStatusSchema,
   updateMembershipApplicationReviewSchema,
@@ -19,6 +21,8 @@ import {
   type ListAdminMembersValues,
   type ListAdminRenewalsValues,
   type ListMembershipApplicationsValues,
+  type ReissueMembershipCardValues,
+  type RevokeMembershipCardValues,
   type RenewMemberValues,
   type UpdateMemberStatusValues,
   type UpdateMembershipApplicationReviewValues,
@@ -1957,6 +1961,275 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         member: updatedMember,
         membershipPeriod,
       };
+    },
+
+    async revokeMembershipCard(input: RevokeMembershipCardValues) {
+      const values = revokeMembershipCardSchema.parse(input);
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(values.organisationId);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        throw new AppError(
+          "FORBIDDEN",
+          "Card management is not available for this organisation.",
+          403,
+        );
+      }
+
+      const { data: member, error: memberError } =
+        await repository.getMemberById({
+          id: values.memberId,
+          organisationId: values.organisationId,
+        });
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be loaded.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!member) {
+        throw new AppError("NOT_FOUND", "Member was not found.", 404);
+      }
+
+      const { data: activeCards, error: activeCardsError } =
+        await repository.getActiveMembershipCardForMember({
+          organisationId: values.organisationId,
+          memberId: values.memberId,
+        });
+
+      if (activeCardsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Active membership card could not be loaded.",
+          500,
+          activeCardsError,
+        );
+      }
+
+      if (!activeCards?.length) {
+        throw new AppError(
+          "CONFLICT",
+          "No active membership card exists to revoke.",
+          409,
+        );
+      }
+
+      if (activeCards.length > 1) {
+        throw new AppError(
+          "CONFLICT",
+          "More than one active card exists. Resolve card history before revoking.",
+          409,
+        );
+      }
+
+      const activeCard = activeCards[0];
+      const revokedAt = new Date().toISOString();
+      const { data: revokedCard, error: revokeError } =
+        await repository.revokeActiveMembershipCard({
+          ...values,
+          cardId: activeCard.id,
+          revokedAt,
+        });
+
+      if (revokeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card could not be revoked.",
+          500,
+          revokeError,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "membership_card_revoked",
+        entityType: "member",
+        entityId: values.memberId,
+        oldValues: {
+          card_id: activeCard.id,
+          card_status: activeCard.card_status,
+        },
+        newValues: {
+          member_id: values.memberId,
+          old_card_id: activeCard.id,
+          card_id: revokedCard.id,
+          card_status: revokedCard.card_status,
+          revoked_by: values.reviewedByUserId,
+          revoked_at: revokedCard.revoked_at,
+          reason: values.reason,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Card revocation audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return redactMembershipCard(revokedCard);
+    },
+
+    async reissueMembershipCard(input: ReissueMembershipCardValues) {
+      const values = reissueMembershipCardSchema.parse(input);
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(values.organisationId);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        throw new AppError(
+          "FORBIDDEN",
+          "Card management is not available for this organisation.",
+          403,
+        );
+      }
+
+      const { data: member, error: memberError } =
+        await repository.getMemberById({
+          id: values.memberId,
+          organisationId: values.organisationId,
+        });
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be loaded.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!member) {
+        throw new AppError("NOT_FOUND", "Member was not found.", 404);
+      }
+
+      const { data: activeCards, error: activeCardsError } =
+        await repository.getActiveMembershipCardForMember({
+          organisationId: values.organisationId,
+          memberId: values.memberId,
+        });
+
+      if (activeCardsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Active membership card could not be checked.",
+          500,
+          activeCardsError,
+        );
+      }
+
+      if (activeCards?.length) {
+        throw new AppError(
+          "CONFLICT",
+          "An active membership card already exists. Revoke it before issuing a replacement.",
+          409,
+        );
+      }
+
+      const { data: cards, error: cardsError } =
+        await repository.listMembershipCardsByMemberIds({
+          organisationId: values.organisationId,
+          memberIds: [values.memberId],
+        });
+
+      if (cardsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card history could not be loaded.",
+          500,
+          cardsError,
+        );
+      }
+
+      const previousCard = cards?.[0] ?? null;
+
+      if (!previousCard) {
+        throw new AppError(
+          "CONFLICT",
+          "No previous membership card exists to replace.",
+          409,
+        );
+      }
+
+      if (previousCard.card_status !== "revoked") {
+        throw new AppError(
+          "CONFLICT",
+          "The latest membership card must be revoked before a replacement can be issued.",
+          409,
+        );
+      }
+
+      const { data: replacementCard, error: createError } =
+        await repository.createReplacementMembershipCard({
+          ...values,
+          qrToken: createMembershipCardToken(),
+        });
+
+      if (createError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Replacement membership card could not be issued.",
+          500,
+          createError,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "membership_card_reissued",
+        entityType: "member",
+        entityId: values.memberId,
+        oldValues: {
+          member_id: values.memberId,
+          old_card_id: previousCard.id,
+          old_card_status: previousCard.card_status,
+        },
+        newValues: {
+          member_id: values.memberId,
+          old_card_id: previousCard.id,
+          new_card_id: replacementCard.id,
+          card_status: replacementCard.card_status,
+          reissued_by: values.reviewedByUserId,
+          reissued_at: replacementCard.issued_at,
+          reason: values.reason,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Card reissue audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return redactMembershipCard(replacementCard);
     },
 
     async updateMemberStatus(input: UpdateMemberStatusValues) {

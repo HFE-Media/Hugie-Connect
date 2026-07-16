@@ -6,6 +6,7 @@ import { AdminMemberActions } from "@/components/membership/admin-member-actions
 import { AdminMemberDetail } from "@/components/membership/admin-member-detail";
 import { Button } from "@/components/ui/button";
 import { toAppError } from "@/lib/errors";
+import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
 
@@ -34,6 +35,7 @@ export default async function AdminMembershipMemberDetailPage({
   const success = readParam(resolvedSearchParams, "success");
   const error = readParam(resolvedSearchParams, "error");
   const profile = await requirePermission("membership:members:manage");
+  const canManageCards = hasPermission(profile.roles, "membership:cards:manage");
   const service = createMembershipAdminService();
   const appUser = await service.getAppUserByAuthUserId(profile.id);
 
@@ -78,7 +80,7 @@ export default async function AdminMembershipMemberDetailPage({
       ) : null}
 
       <AdminMemberActions member={member} />
-      <AdminMemberDetail member={member} />
+      <AdminMemberDetail member={member} canManageCards={canManageCards} />
     </main>
   );
 }
