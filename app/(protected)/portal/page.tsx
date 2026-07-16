@@ -71,16 +71,46 @@ function getGreeting() {
 }
 
 function getDisplayName(params: {
-  firstName?: string | null;
-  lastName?: string | null;
-  email: string;
+  appUserFirstName?: string | null;
+  membershipSummary: MemberMembershipSummary | null;
+  profileFirstName?: string | null;
+  profileLastName?: string | null;
 }) {
-  const firstName = params.firstName?.trim();
-  const fullName = [firstName, params.lastName?.trim()]
+  const appUserFirstName = params.appUserFirstName?.trim();
+
+  if (appUserFirstName) {
+    return appUserFirstName;
+  }
+
+  const applicationFirstName =
+    params.membershipSummary?.membershipApplication?.first_name?.trim();
+
+  if (applicationFirstName) {
+    return applicationFirstName;
+  }
+
+  const memberWithOptionalName = params.membershipSummary?.member as
+    | (NonNullable<MemberMembershipSummary["member"]> & {
+        display_name?: string | null;
+        full_name?: string | null;
+        name?: string | null;
+      })
+    | undefined;
+  const memberDisplayName =
+    memberWithOptionalName?.display_name?.trim() ||
+    memberWithOptionalName?.full_name?.trim() ||
+    memberWithOptionalName?.name?.trim();
+
+  if (memberDisplayName) {
+    return memberDisplayName;
+  }
+
+  const profileName = [params.profileFirstName, params.profileLastName]
+    .map((value) => value?.trim())
     .filter(Boolean)
     .join(" ");
 
-  return firstName || fullName || params.email.split("@")[0] || "there";
+  return profileName || null;
 }
 
 function formatDate(value: string | null) {
@@ -405,9 +435,10 @@ export default async function PortalPage() {
   ]);
 
   const displayName = getDisplayName({
-    firstName: appUser?.first_name ?? profile.firstName,
-    lastName: appUser?.last_name ?? profile.lastName,
-    email: appUser?.email ?? profile.email,
+    appUserFirstName: appUser?.first_name,
+    membershipSummary,
+    profileFirstName: profile.firstName,
+    profileLastName: profile.lastName,
   });
 
   const recentActivity = await loadRecentActivity({
@@ -426,7 +457,7 @@ export default async function PortalPage() {
               <Sparkles className="h-6 w-6" aria-hidden="true" />
             </div>
             <h1 className="text-3xl font-semibold">
-              {getGreeting()}, {displayName}
+              {displayName ? `${getGreeting()}, ${displayName}` : "Welcome back"}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Welcome back to Hugie Connect. Your membership, profile and next
