@@ -33,3 +33,4 @@ coverage/
 # Supabase
 .supabase/
 supabase/.temp/
+.vercel
