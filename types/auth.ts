@@ -19,6 +19,7 @@ export type Permission =
   | "profile:view_own"
   | "admin:shell:view"
   | "membership:applications:manage"
+  | "membership:members:manage"
   | "scanner:shell:view"
   | "users:roles:manage";
 

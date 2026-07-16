@@ -36,6 +36,11 @@ const reviewApplicationFormSchema = z.object({
   rejectionReason: z.string().trim().max(500).optional(),
 });
 
+const updateMemberStatusFormSchema = z.object({
+  memberId: z.string().uuid(),
+  status: z.enum(["active", "suspended"]),
+});
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -48,12 +53,67 @@ function detailPath(applicationId: string, params: Record<string, string>) {
   return `/admin/membership/applications/${applicationId}?${searchParams.toString()}`;
 }
 
+function memberDetailPath(memberId: string, params: Record<string, string>) {
+  const searchParams = new URLSearchParams(params);
+
+  return `/admin/membership/members/${memberId}?${searchParams.toString()}`;
+}
+
 async function getAdminReviewContext() {
   const profile = await requirePermission("membership:applications:manage");
   const service = createMembershipAdminService();
   const appUser = await service.getAppUserByAuthUserId(profile.id);
 
   return { service, appUser };
+}
+
+async function getMemberAdminContext() {
+  const profile = await requirePermission("membership:members:manage");
+  const service = createMembershipAdminService();
+  const appUser = await service.getAppUserByAuthUserId(profile.id);
+
+  return { service, appUser };
+}
+
+export async function updateMemberStatusAdminAction(formData: FormData) {
+  const result = updateMemberStatusFormSchema.safeParse({
+    memberId: readString(formData, "memberId"),
+    status: readString(formData, "status"),
+  });
+
+  if (!result.success) {
+    const memberId = readString(formData, "memberId");
+    redirect(memberDetailPath(memberId, { error: "Check the member action." }));
+  }
+
+  const { service, appUser } = await getMemberAdminContext();
+
+  try {
+    await service.updateMemberStatus({
+      organisationId: appUser.organisation_id,
+      memberId: result.data.memberId,
+      reviewedByUserId: appUser.id,
+      status: result.data.status,
+    });
+
+    revalidatePath("/admin/membership/members");
+    revalidatePath(`/admin/membership/members/${result.data.memberId}`);
+  } catch (error) {
+    redirect(
+      memberDetailPath(result.data.memberId, {
+        error: getSafeErrorMessage(error),
+      }),
+    );
+  }
+
+  redirect(
+    memberDetailPath(result.data.memberId, {
+      success:
+        result.data.status === "suspended"
+          ? "Member suspended."
+          : "Member reactivated.",
+    }),
+  );
 }
 
 export async function approveMembershipApplicationAdminAction(

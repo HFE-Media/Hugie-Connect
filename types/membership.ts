@@ -29,6 +29,15 @@ export type MembershipPeriod =
   Database["public"]["Tables"]["membership_periods"]["Row"];
 export type MembershipCard =
   Database["public"]["Tables"]["membership_cards"]["Row"];
+export type MembershipAuditLog =
+  Database["public"]["Tables"]["audit_logs"]["Row"];
+
+export type MemberAdminStatusFilter =
+  | "active"
+  | "pending"
+  | "suspended"
+  | "inactive"
+  | "expired";
 
 export type MembershipApplicationAdminSummary = MembershipApplication & {
   membershipTypeName: string;
@@ -48,6 +57,45 @@ export type MembershipApplicationsAdminPage = {
   page: number;
   pageSize: number;
   pageCount: number;
+};
+
+export type MemberAdminSummary = Member & {
+  memberName: string;
+  memberEmail: string | null;
+  memberMobile: string | null;
+  membershipTypeName: string;
+  membershipTypeCode: string;
+  linkedAccountEmail: string | null;
+  currentCardStatus: MembershipCardStatus | null;
+  currentPeriodStatus: MembershipPeriodStatus | null;
+  currentPeriodStartsAt: string | null;
+  currentPeriodEndsAt: string | null;
+  derivedStatus: MemberAdminStatusFilter;
+};
+
+export type MembersAdminPage = {
+  members: MemberAdminSummary[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+};
+
+export type MemberAdminDetail = MemberAdminSummary & {
+  application: MembershipApplication | null;
+  linkedAccountFirstName: string | null;
+  linkedAccountLastName: string | null;
+  linkedAccountStatus: string | null;
+  membershipPeriods: MembershipPeriod[];
+  membershipCards: Omit<MembershipCard, "qr_token">[];
+  auditLogs: MembershipAuditLog[];
+};
+
+export type UpdateMemberStatusInput = {
+  organisationId: string;
+  memberId: string;
+  reviewedByUserId: string;
+  status: "active" | "suspended";
 };
 
 export type CreateMembershipApplicationInput = {

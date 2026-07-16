@@ -7,12 +7,16 @@ import {
   approveMembershipApplicationSchema,
   createMembershipApplicationSchema,
   listAdminMembershipApplicationsSchema,
+  listAdminMembersSchema,
   listMembershipApplicationsSchema,
+  updateMemberStatusSchema,
   updateMembershipApplicationReviewSchema,
   type ApproveMembershipApplicationValues,
   type CreateMembershipApplicationValues,
   type ListAdminMembershipApplicationsValues,
+  type ListAdminMembersValues,
   type ListMembershipApplicationsValues,
+  type UpdateMemberStatusValues,
   type UpdateMembershipApplicationReviewValues,
 } from "@/features/membership/schemas";
 import {
@@ -27,6 +31,14 @@ import type {
   MembershipApplicationAdminDetail,
   MembershipApplicationAdminSummary,
   MembershipApplicationsAdminPage,
+  Member,
+  MemberAdminDetail,
+  MemberAdminStatusFilter,
+  MemberAdminSummary,
+  MembersAdminPage,
+  MembershipAuditLog,
+  MembershipCard,
+  MembershipPeriod,
   MembershipType,
 } from "@/types/membership";
 
@@ -58,6 +70,103 @@ function enrichApplicationSummary(
     membershipTypeCode: membershipType?.code ?? "unknown",
     reviewedByName: formatReviewerName(reviewer),
     reviewedByEmail: reviewer?.email ?? null,
+  };
+}
+
+function getCurrentPeriod(periods: MembershipPeriod[]) {
+  const now = new Date();
+
+  return (
+    periods.find((period) => {
+      const startsAt = new Date(period.starts_at);
+      const endsAt = new Date(period.ends_at);
+
+      return period.status === "active" && startsAt <= now && endsAt > now;
+    }) ??
+    periods[0] ??
+    null
+  );
+}
+
+function getCurrentCard(cards: MembershipCard[]) {
+  return (
+    cards.find((card) => card.card_status === "active") ??
+    cards[0] ??
+    null
+  );
+}
+
+function isMemberExpired(member: Member) {
+  return member.expires_at ? new Date(member.expires_at) <= new Date() : false;
+}
+
+function getDerivedMemberStatus(member: Member): MemberAdminStatusFilter {
+  if (member.status === "cancelled") {
+    return "inactive";
+  }
+
+  if (member.status === "expired" || isMemberExpired(member)) {
+    return "expired";
+  }
+
+  return member.status;
+}
+
+function getMemberName(params: {
+  application?: MembershipApplication | null;
+  user?: MembershipUser | null;
+}) {
+  const applicationName = [
+    params.application?.first_name,
+    params.application?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (applicationName) {
+    return applicationName;
+  }
+
+  const userName = [params.user?.first_name, params.user?.last_name]
+    .filter(Boolean)
+    .join(" ");
+
+  return userName || "Member";
+}
+
+function redactMembershipCard(card: MembershipCard) {
+  const { qr_token: _qrToken, ...safeCard } = card;
+
+  return safeCard;
+}
+
+function enrichMemberSummary(params: {
+  member: Member;
+  membershipType?: MembershipType;
+  application?: MembershipApplication | null;
+  user?: MembershipUser | null;
+  periods: MembershipPeriod[];
+  cards: MembershipCard[];
+}): MemberAdminSummary {
+  const currentPeriod = getCurrentPeriod(params.periods);
+  const currentCard = getCurrentCard(params.cards);
+
+  return {
+    ...params.member,
+    memberName: getMemberName({
+      application: params.application,
+      user: params.user,
+    }),
+    memberEmail: params.application?.email ?? params.user?.email ?? null,
+    memberMobile: params.application?.mobile ?? params.user?.mobile ?? null,
+    membershipTypeName: params.membershipType?.name ?? "Unknown membership type",
+    membershipTypeCode: params.membershipType?.code ?? "unknown",
+    linkedAccountEmail: params.user?.email ?? null,
+    currentCardStatus: currentCard?.card_status ?? null,
+    currentPeriodStatus: currentPeriod?.status ?? null,
+    currentPeriodStartsAt: currentPeriod?.starts_at ?? null,
+    currentPeriodEndsAt: currentPeriod?.ends_at ?? null,
+    derivedStatus: getDerivedMemberStatus(params.member),
   };
 }
 
@@ -379,6 +488,444 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         ),
         membershipTypeDescription: membershipType?.description ?? null,
       };
+    },
+
+    async listMembersForAdmin(
+      input: ListAdminMembersValues,
+    ): Promise<MembersAdminPage> {
+      const values = listAdminMembersSchema.parse(input);
+      const search = values.search?.trim();
+      const [matchingApplicationsResult, matchingUsersResult] = search
+        ? await Promise.all([
+            repository.listMembershipApplicationsBySearch({
+              organisationId: values.organisationId,
+              search,
+            }),
+            repository.listUsersBySearch({
+              organisationId: values.organisationId,
+              search,
+            }),
+          ])
+        : [
+            { data: [], error: null },
+            { data: [], error: null },
+          ];
+
+      if (matchingApplicationsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Application search could not be completed.",
+          500,
+          matchingApplicationsResult.error,
+        );
+      }
+
+      if (matchingUsersResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account search could not be completed.",
+          500,
+          matchingUsersResult.error,
+        );
+      }
+
+      const { data, error, count } = await repository.listMembersForAdmin({
+        ...values,
+        applicationIds: (matchingApplicationsResult.data ?? []).map(
+          (application) => application.id,
+        ),
+        userIds: (matchingUsersResult.data ?? []).map((user) => user.id),
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Members could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      const members = data ?? [];
+      const memberIds = members.map((member) => member.id);
+      const membershipTypeIds = Array.from(
+        new Set(members.map((member) => member.membership_type_id)),
+      );
+      const applicationIds = Array.from(
+        new Set(
+          members
+            .map((member) => member.membership_application_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const userIds = Array.from(
+        new Set(
+          members
+            .map((member) => member.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      const [
+        membershipTypesResult,
+        applicationsResult,
+        usersResult,
+        periodsResult,
+        cardsResult,
+      ] = await Promise.all([
+        repository.listMembershipTypesByIds({
+          organisationId: values.organisationId,
+          ids: membershipTypeIds,
+        }),
+        repository.listMembershipApplicationsByIds({
+          organisationId: values.organisationId,
+          ids: applicationIds,
+        }),
+        repository.listUsersByIds({
+          organisationId: values.organisationId,
+          ids: userIds,
+        }),
+        repository.listMembershipPeriodsByMemberIds({
+          organisationId: values.organisationId,
+          memberIds,
+        }),
+        repository.listMembershipCardsByMemberIds({
+          organisationId: values.organisationId,
+          memberIds,
+        }),
+      ]);
+
+      if (membershipTypesResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership types could not be loaded.",
+          500,
+          membershipTypesResult.error,
+        );
+      }
+
+      if (applicationsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Applications could not be loaded.",
+          500,
+          applicationsResult.error,
+        );
+      }
+
+      if (usersResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Linked accounts could not be loaded.",
+          500,
+          usersResult.error,
+        );
+      }
+
+      if (periodsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership periods could not be loaded.",
+          500,
+          periodsResult.error,
+        );
+      }
+
+      if (cardsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership cards could not be loaded.",
+          500,
+          cardsResult.error,
+        );
+      }
+
+      const membershipTypeById = new Map(
+        (membershipTypesResult.data ?? []).map((membershipType) => [
+          membershipType.id,
+          membershipType,
+        ]),
+      );
+      const applicationById = new Map(
+        (applicationsResult.data ?? []).map((application) => [
+          application.id,
+          application,
+        ]),
+      );
+      const userById = new Map(
+        (usersResult.data ?? []).map((user) => [user.id, user]),
+      );
+      const periodsByMemberId = new Map<string, MembershipPeriod[]>();
+      const cardsByMemberId = new Map<string, MembershipCard[]>();
+
+      (periodsResult.data ?? []).forEach((period) => {
+        periodsByMemberId.set(period.member_id, [
+          ...(periodsByMemberId.get(period.member_id) ?? []),
+          period,
+        ]);
+      });
+
+      (cardsResult.data ?? []).forEach((card) => {
+        cardsByMemberId.set(card.member_id, [
+          ...(cardsByMemberId.get(card.member_id) ?? []),
+          card,
+        ]);
+      });
+
+      const totalCount = count ?? 0;
+
+      return {
+        members: members.map((member) =>
+          enrichMemberSummary({
+            member,
+            membershipType: membershipTypeById.get(member.membership_type_id),
+            application: member.membership_application_id
+              ? applicationById.get(member.membership_application_id)
+              : null,
+            user: member.user_id ? userById.get(member.user_id) : null,
+            periods: periodsByMemberId.get(member.id) ?? [],
+            cards: cardsByMemberId.get(member.id) ?? [],
+          }),
+        ),
+        totalCount,
+        page: values.page,
+        pageSize: values.pageSize,
+        pageCount: Math.max(1, Math.ceil(totalCount / values.pageSize)),
+      };
+    },
+
+    async getMemberForAdmin(params: {
+      id: string;
+      organisationId: string;
+    }): Promise<MemberAdminDetail> {
+      const { data: member, error: memberError } =
+        await repository.getMemberById(params);
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be loaded.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!member) {
+        throw new AppError("NOT_FOUND", "Member was not found.", 404);
+      }
+
+      const [
+        membershipTypeResult,
+        applicationResult,
+        userResult,
+        periodsResult,
+        cardsResult,
+        auditLogsResult,
+      ] = await Promise.all([
+        repository.getMembershipTypeById({
+          id: member.membership_type_id,
+          organisationId: member.organisation_id,
+        }),
+        member.membership_application_id
+          ? repository.getMembershipApplicationById({
+              id: member.membership_application_id,
+              organisationId: member.organisation_id,
+            })
+          : { data: null, error: null },
+        member.user_id
+          ? repository.listUsersByIds({
+              organisationId: member.organisation_id,
+              ids: [member.user_id],
+            })
+          : { data: [], error: null },
+        repository.listMembershipPeriodsByMemberIds({
+          organisationId: member.organisation_id,
+          memberIds: [member.id],
+        }),
+        repository.listMembershipCardsByMemberIds({
+          organisationId: member.organisation_id,
+          memberIds: [member.id],
+        }),
+        repository.listAuditLogsForMember({
+          organisationId: member.organisation_id,
+          memberId: member.id,
+        }),
+      ]);
+
+      if (membershipTypeResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be loaded.",
+          500,
+          membershipTypeResult.error,
+        );
+      }
+
+      if (applicationResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be loaded.",
+          500,
+          applicationResult.error,
+        );
+      }
+
+      if (userResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Linked account could not be loaded.",
+          500,
+          userResult.error,
+        );
+      }
+
+      if (periodsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership periods could not be loaded.",
+          500,
+          periodsResult.error,
+        );
+      }
+
+      if (cardsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership cards could not be loaded.",
+          500,
+          cardsResult.error,
+        );
+      }
+
+      if (auditLogsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Audit timeline could not be loaded.",
+          500,
+          auditLogsResult.error,
+        );
+      }
+
+      const user = userResult.data?.[0] ?? null;
+      const periods = periodsResult.data ?? [];
+      const cards = cardsResult.data ?? [];
+
+      return {
+        ...enrichMemberSummary({
+          member,
+          membershipType: membershipTypeResult.data ?? undefined,
+          application: applicationResult.data,
+          user,
+          periods,
+          cards,
+        }),
+        application: applicationResult.data,
+        linkedAccountFirstName: user?.first_name ?? null,
+        linkedAccountLastName: user?.last_name ?? null,
+        linkedAccountStatus: user?.status ?? null,
+        membershipPeriods: periods,
+        membershipCards: cards.map(redactMembershipCard),
+        auditLogs: auditLogsResult.data ?? [],
+      };
+    },
+
+    async updateMemberStatus(input: UpdateMemberStatusValues) {
+      const values = updateMemberStatusSchema.parse(input);
+      const { data: existingMember, error: existingMemberError } =
+        await repository.getMemberById({
+          id: values.memberId,
+          organisationId: values.organisationId,
+        });
+
+      if (existingMemberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be loaded.",
+          500,
+          existingMemberError,
+        );
+      }
+
+      if (!existingMember) {
+        throw new AppError("NOT_FOUND", "Member was not found.", 404);
+      }
+
+      if (existingMember.status === "cancelled") {
+        throw new AppError(
+          "CONFLICT",
+          "Cancelled members cannot be reactivated in this workflow.",
+          409,
+        );
+      }
+
+      if (existingMember.status === values.status) {
+        return existingMember;
+      }
+
+      if (
+        values.status === "suspended" &&
+        !["active", "pending"].includes(existingMember.status)
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "Only active or pending members can be suspended.",
+          409,
+        );
+      }
+
+      if (
+        values.status === "active" &&
+        !["suspended", "expired"].includes(existingMember.status)
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "Only suspended or expired members can be reactivated.",
+          409,
+        );
+      }
+
+      const { data: updatedMember, error: updateError } =
+        await repository.updateMemberStatus(values);
+
+      if (updateError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member status could not be updated.",
+          500,
+          updateError,
+        );
+      }
+
+      const action =
+        values.status === "suspended"
+          ? "member_suspended"
+          : "member_reactivated";
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action,
+        entityType: "member",
+        entityId: values.memberId,
+        oldValues: {
+          status: existingMember.status,
+          expires_at: existingMember.expires_at,
+        },
+        newValues: {
+          status: updatedMember.status,
+          expires_at: updatedMember.expires_at,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member status audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return updatedMember;
     },
 
     async updateMembershipApplicationReview(

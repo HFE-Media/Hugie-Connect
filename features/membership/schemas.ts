@@ -27,6 +27,14 @@ export const memberStatusSchema = z.enum([
   "cancelled",
 ]);
 
+export const memberAdminStatusFilterSchema = z.enum([
+  "active",
+  "pending",
+  "suspended",
+  "inactive",
+  "expired",
+]);
+
 export const createMembershipApplicationSchema = z.object({
   organisationId: z.string().uuid(),
   membershipTypeId: z.string().uuid(),
@@ -48,6 +56,21 @@ export const listAdminMembershipApplicationsSchema = z.object({
   search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const listAdminMembersSchema = z.object({
+  organisationId: z.string().uuid(),
+  status: memberAdminStatusFilterSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const updateMemberStatusSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  status: z.enum(["active", "suspended"]),
 });
 
 export const updateMembershipApplicationReviewSchema = z
@@ -98,6 +121,10 @@ export type ListMembershipApplicationsValues = z.infer<
 export type ListAdminMembershipApplicationsValues = z.infer<
   typeof listAdminMembershipApplicationsSchema
 >;
+
+export type ListAdminMembersValues = z.infer<typeof listAdminMembersSchema>;
+
+export type UpdateMemberStatusValues = z.infer<typeof updateMemberStatusSchema>;
 
 export type UpdateMembershipApplicationReviewValues = z.infer<
   typeof updateMembershipApplicationReviewSchema

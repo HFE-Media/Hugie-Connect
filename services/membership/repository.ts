@@ -5,7 +5,9 @@ import type {
   ApprovedMembershipApplicationResult,
   ApproveMembershipApplicationInput,
   CreateMembershipApplicationInput,
+  MemberAdminStatusFilter,
   MembershipApplicationStatus,
+  UpdateMemberStatusInput,
   UpdateMembershipApplicationReviewInput,
 } from "@/types/membership";
 
@@ -165,6 +167,157 @@ export function createMembershipRepository(client: MembershipRepositoryClient) {
         .select("*")
         .eq("organisation_id", params.organisationId)
         .in("id", params.ids);
+    },
+
+    async listMembershipApplicationsBySearch(params: {
+      organisationId: string;
+      search: string;
+    }) {
+      return client
+        .from("membership_applications")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .or(
+          `first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%,email.ilike.%${params.search}%`,
+        )
+        .limit(100);
+    },
+
+    async listUsersBySearch(params: { organisationId: string; search: string }) {
+      return client
+        .from("users")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .or(
+          `first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%,email.ilike.%${params.search}%`,
+        )
+        .limit(100);
+    },
+
+    async listMembersForAdmin(params: {
+      organisationId: string;
+      status?: MemberAdminStatusFilter;
+      search?: string;
+      applicationIds?: string[];
+      userIds?: string[];
+      page: number;
+      pageSize: number;
+    }) {
+      const from = (params.page - 1) * params.pageSize;
+      const to = from + params.pageSize - 1;
+      const now = new Date().toISOString();
+      let query = client
+        .from("members")
+        .select("*", { count: "exact" })
+        .eq("organisation_id", params.organisationId)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (params.status === "active") {
+        query = query
+          .eq("status", "active")
+          .or(`expires_at.is.null,expires_at.gt.${now}`);
+      } else if (params.status === "pending") {
+        query = query.eq("status", "pending");
+      } else if (params.status === "suspended") {
+        query = query.eq("status", "suspended");
+      } else if (params.status === "inactive") {
+        query = query.eq("status", "cancelled");
+      } else if (params.status === "expired") {
+        query = query.or(`status.eq.expired,expires_at.lte.${now}`);
+      }
+
+      if (params.search) {
+        const searchFilters = [`member_number.ilike.%${params.search}%`];
+
+        if (params.applicationIds?.length) {
+          searchFilters.push(
+            `membership_application_id.in.(${params.applicationIds.join(",")})`,
+          );
+        }
+
+        if (params.userIds?.length) {
+          searchFilters.push(`user_id.in.(${params.userIds.join(",")})`);
+        }
+
+        query = query.or(searchFilters.join(","));
+      }
+
+      return query;
+    },
+
+    async listMembershipApplicationsByIds(params: {
+      organisationId: string;
+      ids: string[];
+    }) {
+      if (params.ids.length === 0) {
+        return { data: [], error: null };
+      }
+
+      return client
+        .from("membership_applications")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .in("id", params.ids);
+    },
+
+    async listMembershipPeriodsByMemberIds(params: {
+      organisationId: string;
+      memberIds: string[];
+    }) {
+      if (params.memberIds.length === 0) {
+        return { data: [], error: null };
+      }
+
+      return client
+        .from("membership_periods")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .in("member_id", params.memberIds)
+        .order("starts_at", { ascending: false });
+    },
+
+    async listMembershipCardsByMemberIds(params: {
+      organisationId: string;
+      memberIds: string[];
+    }) {
+      if (params.memberIds.length === 0) {
+        return { data: [], error: null };
+      }
+
+      return client
+        .from("membership_cards")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .in("member_id", params.memberIds)
+        .order("issued_at", { ascending: false });
+    },
+
+    async listAuditLogsForMember(params: {
+      organisationId: string;
+      memberId: string;
+    }) {
+      return client
+        .from("audit_logs")
+        .select("*")
+        .eq("organisation_id", params.organisationId)
+        .eq("entity_type", "member")
+        .eq("entity_id", params.memberId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+    },
+
+    async updateMemberStatus(input: UpdateMemberStatusInput) {
+      return client
+        .from("members")
+        .update({
+          status: input.status,
+          cancelled_at: null,
+        })
+        .eq("id", input.memberId)
+        .eq("organisation_id", input.organisationId)
+        .select("*")
+        .single();
     },
 
     async updateMembershipApplicationReview(
