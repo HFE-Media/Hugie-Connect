@@ -8,14 +8,18 @@ import {
   createMembershipApplicationSchema,
   listAdminMembershipApplicationsSchema,
   listAdminMembersSchema,
+  listAdminRenewalsSchema,
   listMembershipApplicationsSchema,
+  renewMemberSchema,
   updateMemberStatusSchema,
   updateMembershipApplicationReviewSchema,
   type ApproveMembershipApplicationValues,
   type CreateMembershipApplicationValues,
   type ListAdminMembershipApplicationsValues,
   type ListAdminMembersValues,
+  type ListAdminRenewalsValues,
   type ListMembershipApplicationsValues,
+  type RenewMemberValues,
   type UpdateMemberStatusValues,
   type UpdateMembershipApplicationReviewValues,
 } from "@/features/membership/schemas";
@@ -35,11 +39,18 @@ import type {
   MemberAdminDetail,
   MemberAdminStatusFilter,
   MemberAdminSummary,
+  MemberRenewalDetail,
+  MemberRenewalsAdminPage,
+  MemberRenewalSummary,
+  MemberMembershipSummary,
   MembersAdminPage,
+  LinkOwnMembershipResult,
   MembershipAuditLog,
   MembershipCard,
+  MembershipCardDisplay,
   MembershipPeriod,
   MembershipType,
+  MembershipVerificationResult,
 } from "@/types/membership";
 
 function createMembershipCardToken() {
@@ -94,6 +105,98 @@ function getCurrentCard(cards: MembershipCard[]) {
     cards[0] ??
     null
   );
+}
+
+function mapMembershipCardDisplay(
+  card: MembershipCard | null,
+): MembershipCardDisplay | null {
+  if (!card) {
+    return null;
+  }
+
+  return {
+    status: card.card_status,
+    qrValue: card.card_status === "active" ? `membership:${card.qr_token}` : null,
+    issuedAt: card.issued_at,
+  };
+}
+
+function normaliseEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function normaliseNullableString(value?: string | null) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : null;
+}
+
+function parseMembershipQrPayload(payload: string) {
+  const trimmed = payload.trim();
+  const prefix = "membership:";
+
+  if (!trimmed.startsWith(prefix)) {
+    return null;
+  }
+
+  const token = trimmed.slice(prefix.length).trim();
+
+  if (!token || token.length > 256 || /\s/.test(token)) {
+    return null;
+  }
+
+  return token;
+}
+
+function hasActivePeriod(periods: MembershipPeriod[], now: Date) {
+  return periods.some((period) => {
+    const startsAt = new Date(period.starts_at);
+    const endsAt = new Date(period.ends_at);
+
+    return period.status === "active" && startsAt <= now && endsAt > now;
+  });
+}
+
+function isExpired(value: string | null, now: Date) {
+  return value ? new Date(value) <= now : false;
+}
+
+function getVerificationMemberName(params: {
+  applicationFirstName?: string | null;
+  applicationLastName?: string | null;
+  userFirstName?: string | null;
+  userLastName?: string | null;
+}) {
+  const applicationName = [
+    params.applicationFirstName,
+    params.applicationLastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (applicationName) {
+    return applicationName;
+  }
+
+  const userName = [params.userFirstName, params.userLastName]
+    .filter(Boolean)
+    .join(" ");
+
+  return userName || "Member";
+}
+
+function createVerificationResult(input: {
+  tone: MembershipVerificationResult["tone"];
+  title: string;
+  message: string;
+  memberName?: string;
+  membershipTypeName?: string;
+  memberNumber?: string;
+  memberStatus?: MembershipVerificationResult["memberStatus"];
+  expiresAt?: string | null;
+  organisationName?: string;
+}): MembershipVerificationResult {
+  return input;
 }
 
 function isMemberExpired(member: Member) {
@@ -167,6 +270,38 @@ function enrichMemberSummary(params: {
     currentPeriodStartsAt: currentPeriod?.starts_at ?? null,
     currentPeriodEndsAt: currentPeriod?.ends_at ?? null,
     derivedStatus: getDerivedMemberStatus(params.member),
+  };
+}
+
+function getRenewalStatus(
+  member: Member,
+  expiringSoonDays = 30,
+): "active" | "expiring_soon" | "expired" | "renewed_recently" {
+  const now = new Date();
+
+  if (member.status === "expired" || isMemberExpired(member)) {
+    return "expired";
+  }
+
+  if (member.status === "active" && member.expires_at) {
+    const soon = new Date(now);
+    soon.setDate(soon.getDate() + expiringSoonDays);
+
+    if (new Date(member.expires_at) <= soon) {
+      return "expiring_soon";
+    }
+  }
+
+  return "active";
+}
+
+function enrichRenewalSummary(
+  summary: MemberAdminSummary,
+  expiringSoonDays: number,
+): MemberRenewalSummary {
+  return {
+    ...summary,
+    renewalStatus: getRenewalStatus(summary, expiringSoonDays),
   };
 }
 
@@ -311,6 +446,598 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       }
 
       return data;
+    },
+
+    async ensureAppUserProfile(input: {
+      authUserId: string;
+      email: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    }): Promise<MembershipOrganisationUser> {
+      const email = normaliseEmail(input.email);
+      const { data: existingByAuthId, error: authLookupError } =
+        await repository.getUserByAuthUserId(input.authUserId);
+
+      if (authLookupError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account profile could not be loaded.",
+          500,
+          authLookupError,
+        );
+      }
+
+      if (existingByAuthId?.organisation_id) {
+        return {
+          ...existingByAuthId,
+          organisation_id: existingByAuthId.organisation_id,
+        };
+      }
+
+      const organisations = await this.listActiveOrganisations();
+      const organisationId =
+        existingByAuthId?.organisation_id ?? organisations[0]?.id;
+
+      if (!organisationId) {
+        throw new AppError(
+          "FORBIDDEN",
+          "No active organisation is available for this account.",
+          403,
+        );
+      }
+
+      if (existingByAuthId) {
+        const { data: updatedUser, error: updateError } =
+          await repository.updateUserOrganisation({
+            userId: existingByAuthId.id,
+            organisationId,
+          });
+
+        if (updateError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Account profile could not be assigned to an organisation.",
+            500,
+            updateError,
+          );
+        }
+
+        return { ...updatedUser, organisation_id: organisationId };
+      }
+
+      const { data: usersByEmail, error: emailLookupError } =
+        await repository.listUsersByEmail(email);
+
+      if (emailLookupError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account profile could not be matched.",
+          500,
+          emailLookupError,
+        );
+      }
+
+      const safeEmailMatches = (usersByEmail ?? []).filter(
+        (user) =>
+          user.email === email &&
+          (!user.auth_user_id || user.auth_user_id === input.authUserId),
+      );
+
+      if (safeEmailMatches.length === 1) {
+        const matchedUser = safeEmailMatches[0];
+
+        if (matchedUser.organisation_id) {
+          return {
+            ...matchedUser,
+            organisation_id: matchedUser.organisation_id,
+          };
+        }
+
+        const { data: updatedUser, error: updateError } =
+          await repository.updateUserOrganisation({
+            userId: matchedUser.id,
+            organisationId,
+          });
+
+        if (updateError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Account profile could not be assigned to an organisation.",
+            500,
+            updateError,
+          );
+        }
+
+        return { ...updatedUser, organisation_id: organisationId };
+      }
+
+      if (safeEmailMatches.length > 1) {
+        throw new AppError(
+          "CONFLICT",
+          "Multiple account profiles match this email. Please contact the organisation.",
+          409,
+        );
+      }
+
+      const { data: createdUser, error: createError } =
+        await repository.createUser({
+          authUserId: input.authUserId,
+          organisationId,
+          firstName: normaliseNullableString(input.firstName),
+          lastName: normaliseNullableString(input.lastName),
+          email,
+        });
+
+      if (createError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account profile could not be created.",
+          500,
+          createError,
+        );
+      }
+
+      return { ...createdUser, organisation_id: organisationId };
+    },
+
+    async getOwnMembershipSummary(
+      authUserId: string,
+    ): Promise<MemberMembershipSummary | null> {
+      const { data: appUser, error: userError } =
+        await repository.getUserByAuthUserId(authUserId);
+
+      if (userError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account profile could not be loaded.",
+          500,
+          userError,
+        );
+      }
+
+      if (!appUser?.organisation_id) {
+        return null;
+      }
+
+      const { data: members, error: membersError } =
+        await repository.listOwnVisibleMembers({
+          userId: appUser.id,
+          organisationId: appUser.organisation_id,
+        });
+
+      if (membersError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership could not be loaded.",
+          500,
+          membersError,
+        );
+      }
+
+      const member = members?.[0];
+
+      if (!member) {
+        return null;
+      }
+
+      const [
+        organisationResult,
+        membershipTypeResult,
+        periodsResult,
+        cardsResult,
+      ] = await Promise.all([
+        repository.getActiveOrganisationById(member.organisation_id),
+        repository.getMembershipTypeById({
+          id: member.membership_type_id,
+          organisationId: member.organisation_id,
+        }),
+        repository.listMembershipPeriodsByMemberIds({
+          organisationId: member.organisation_id,
+          memberIds: [member.id],
+        }),
+        repository.listMembershipCardsByMemberIds({
+          organisationId: member.organisation_id,
+          memberIds: [member.id],
+        }),
+      ]);
+
+      if (organisationResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be loaded.",
+          500,
+          organisationResult.error,
+        );
+      }
+
+      if (membershipTypeResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be loaded.",
+          500,
+          membershipTypeResult.error,
+        );
+      }
+
+      if (periodsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership period could not be loaded.",
+          500,
+          periodsResult.error,
+        );
+      }
+
+      if (cardsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card could not be loaded.",
+          500,
+          cardsResult.error,
+        );
+      }
+
+      if (!organisationResult.data || !membershipTypeResult.data) {
+        return null;
+      }
+
+      return {
+        member,
+        memberUser: appUser,
+        organisation: organisationResult.data,
+        membershipType: membershipTypeResult.data,
+        currentPeriod: getCurrentPeriod(periodsResult.data ?? []),
+        membershipCard: mapMembershipCardDisplay(
+          getCurrentCard(cardsResult.data ?? []),
+        ),
+      };
+    },
+
+    async linkOwnMembershipByEmail(input: {
+      authUserId: string;
+      email: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    }): Promise<LinkOwnMembershipResult> {
+      const appUser = await this.ensureAppUserProfile(input);
+      const existingSummary = await this.getOwnMembershipSummary(
+        input.authUserId,
+      );
+
+      if (existingSummary) {
+        return {
+          status: "already_linked",
+          memberId: existingSummary.member.id,
+        };
+      }
+
+      const { data: applications, error: applicationsError } =
+        await repository.listApprovedApplicationsByEmail({
+          email: normaliseEmail(input.email),
+          organisationId: appUser.organisation_id,
+        });
+
+      if (applicationsError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Approved memberships could not be searched.",
+          500,
+          applicationsError,
+        );
+      }
+
+      if (!applications?.length) {
+        return { status: "no_match" };
+      }
+
+      const { data: members, error: membersError } =
+        await repository.listUnlinkedMembersByApplicationIds({
+          applicationIds: applications.map((application) => application.id),
+          organisationId: appUser.organisation_id,
+        });
+
+      if (membersError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Memberships could not be searched.",
+          500,
+          membersError,
+        );
+      }
+
+      if (!members?.length) {
+        return { status: "no_match" };
+      }
+
+      if (members.length > 1) {
+        return { status: "multiple_matches" };
+      }
+
+      const member = members[0];
+      const { data: linkedMember, error: linkError } =
+        await repository.linkMemberToUser({
+          memberId: member.id,
+          userId: appUser.id,
+          organisationId: appUser.organisation_id,
+        });
+
+      if (linkError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership could not be linked.",
+          500,
+          linkError,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: appUser.organisation_id,
+        userId: appUser.id,
+        action: "member_account_linked",
+        entityType: "member",
+        entityId: linkedMember.id,
+        oldValues: { user_id: null },
+        newValues: {
+          user_id: appUser.id,
+          linked_by: appUser.id,
+          linked_at: new Date().toISOString(),
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership link audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return { status: "linked", memberId: linkedMember.id };
+    },
+
+    async verifyMembershipQrPayload(input: {
+      payload: string;
+      verifierAuthUserId: string;
+      canVerifyAllOrganisations: boolean;
+    }): Promise<MembershipVerificationResult> {
+      const qrToken = parseMembershipQrPayload(input.payload);
+
+      if (!qrToken) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Invalid QR",
+          message: "This is not a recognised membership QR code.",
+        });
+      }
+
+      const { data: verifier, error: verifierError } =
+        await repository.getUserByAuthUserId(input.verifierAuthUserId);
+
+      if (verifierError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Verifier profile could not be loaded.",
+          500,
+          verifierError,
+        );
+      }
+
+      if (!input.canVerifyAllOrganisations && !verifier?.organisation_id) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Verifier not assigned",
+          message: "This account is not assigned to an organisation.",
+        });
+      }
+
+      const { data: card, error: cardError } =
+        await repository.getMembershipCardByQrToken(qrToken);
+
+      if (cardError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership card could not be checked.",
+          500,
+          cardError,
+        );
+      }
+
+      if (!card) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Unknown membership QR",
+          message: "No membership card matched this QR code.",
+        });
+      }
+
+      if (
+        !input.canVerifyAllOrganisations &&
+        verifier?.organisation_id !== card.organisation_id
+      ) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Unknown membership QR",
+          message: "No membership card matched this QR code.",
+        });
+      }
+
+      const { data: member, error: memberError } =
+        await repository.getMemberById({
+          id: card.member_id,
+          organisationId: card.organisation_id,
+        });
+
+      if (memberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be checked.",
+          500,
+          memberError,
+        );
+      }
+
+      if (!member) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Member missing",
+          message: "This QR code is not linked to a valid member record.",
+        });
+      }
+
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(card.organisation_id);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Organisation inactive",
+          message: "The organisation for this membership is not active.",
+        });
+      }
+
+      const { data: membershipType, error: membershipTypeError } =
+        await repository.getMembershipTypeById({
+          id: member.membership_type_id,
+          organisationId: member.organisation_id,
+        });
+
+      if (membershipTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership type could not be checked.",
+          500,
+          membershipTypeError,
+        );
+      }
+
+      if (!membershipType) {
+        return createVerificationResult({
+          tone: "invalid",
+          title: "Membership type missing",
+          message: "This membership record is incomplete.",
+        });
+      }
+
+      const [
+        periodsResult,
+        usersResult,
+        applicationResult,
+      ] = await Promise.all([
+        repository.listMembershipPeriodsByMemberIds({
+          memberIds: [member.id],
+          organisationId: member.organisation_id,
+        }),
+        member.user_id
+          ? repository.listUsersByIds({
+              ids: [member.user_id],
+              organisationId: member.organisation_id,
+            })
+          : Promise.resolve({ data: [], error: null }),
+        member.membership_application_id
+          ? repository.getMembershipApplicationById({
+              id: member.membership_application_id,
+              organisationId: member.organisation_id,
+            })
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (periodsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership period could not be checked.",
+          500,
+          periodsResult.error,
+        );
+      }
+
+      if (usersResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member user could not be checked.",
+          500,
+          usersResult.error,
+        );
+      }
+
+      if (applicationResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be checked.",
+          500,
+          applicationResult.error,
+        );
+      }
+
+      const user = usersResult.data?.[0] ?? null;
+      const application = applicationResult.data;
+      const memberName = getVerificationMemberName({
+        applicationFirstName: application?.first_name,
+        applicationLastName: application?.last_name,
+        userFirstName: user?.first_name,
+        userLastName: user?.last_name,
+      });
+      const commonResult = {
+        memberName,
+        membershipTypeName: membershipType.name,
+        memberNumber: member.member_number,
+        memberStatus: member.status,
+        expiresAt: member.expires_at,
+        organisationName: organisation.name,
+      };
+      const now = new Date();
+
+      if (card.card_status !== "active") {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Card not active",
+          message: "This membership card is not active.",
+          ...commonResult,
+        });
+      }
+
+      if (member.status !== "active") {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Member not active",
+          message: "This member is not currently active.",
+          ...commonResult,
+        });
+      }
+
+      if (isExpired(member.expires_at, now)) {
+        return createVerificationResult({
+          tone: "warning",
+          title: "Membership expired",
+          message: "This membership has passed its expiry date.",
+          ...commonResult,
+        });
+      }
+
+      if (!hasActivePeriod(periodsResult.data ?? [], now)) {
+        return createVerificationResult({
+          tone: "warning",
+          title: "No active period",
+          message: "This membership does not have an active current period.",
+          ...commonResult,
+        });
+      }
+
+      return createVerificationResult({
+        tone: "valid",
+        title: "Valid membership",
+        message: "This membership QR is active and valid.",
+        ...commonResult,
+      });
     },
 
     async getAppUserByAuthUserId(
@@ -694,6 +1421,244 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       };
     },
 
+    async listRenewalsForAdmin(
+      input: ListAdminRenewalsValues,
+    ): Promise<MemberRenewalsAdminPage> {
+      const values = listAdminRenewalsSchema.parse(input);
+      const search = values.search?.trim();
+      const renewedSince = new Date();
+      renewedSince.setDate(renewedSince.getDate() - 30);
+      const [
+        matchingApplicationsResult,
+        matchingUsersResult,
+        renewedMemberIdsResult,
+      ] = await Promise.all([
+        search
+          ? repository.listMembershipApplicationsBySearch({
+              organisationId: values.organisationId,
+              search,
+            })
+          : Promise.resolve({ data: [], error: null }),
+        search
+          ? repository.listUsersBySearch({
+              organisationId: values.organisationId,
+              search,
+            })
+          : Promise.resolve({ data: [], error: null }),
+        values.filter === "renewed_recently"
+          ? repository.listRenewedRecentlyMemberIds({
+              organisationId: values.organisationId,
+              since: renewedSince.toISOString(),
+            })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (matchingApplicationsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Application search could not be completed.",
+          500,
+          matchingApplicationsResult.error,
+        );
+      }
+
+      if (matchingUsersResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Account search could not be completed.",
+          500,
+          matchingUsersResult.error,
+        );
+      }
+
+      if (renewedMemberIdsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Renewed members could not be loaded.",
+          500,
+          renewedMemberIdsResult.error,
+        );
+      }
+
+      const renewedMemberIds = Array.from(
+        new Set(
+          (renewedMemberIdsResult.data ?? [])
+            .map((log) => log.entity_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const { data, error, count } =
+        await repository.listMembersForRenewalAdmin({
+          ...values,
+          applicationIds: (matchingApplicationsResult.data ?? []).map(
+            (application) => application.id,
+          ),
+          userIds: (matchingUsersResult.data ?? []).map((user) => user.id),
+          renewedMemberIds,
+        });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Renewals could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      const members = data ?? [];
+      const memberIds = members.map((member) => member.id);
+      const membershipTypeIds = Array.from(
+        new Set(members.map((member) => member.membership_type_id)),
+      );
+      const applicationIds = Array.from(
+        new Set(
+          members
+            .map((member) => member.membership_application_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const userIds = Array.from(
+        new Set(
+          members
+            .map((member) => member.user_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+      const [
+        membershipTypesResult,
+        applicationsResult,
+        usersResult,
+        periodsResult,
+        cardsResult,
+      ] = await Promise.all([
+        repository.listMembershipTypesByIds({
+          organisationId: values.organisationId,
+          ids: membershipTypeIds,
+        }),
+        repository.listMembershipApplicationsByIds({
+          organisationId: values.organisationId,
+          ids: applicationIds,
+        }),
+        repository.listUsersByIds({
+          organisationId: values.organisationId,
+          ids: userIds,
+        }),
+        repository.listMembershipPeriodsByMemberIds({
+          organisationId: values.organisationId,
+          memberIds,
+        }),
+        repository.listMembershipCardsByMemberIds({
+          organisationId: values.organisationId,
+          memberIds,
+        }),
+      ]);
+
+      if (membershipTypesResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership types could not be loaded.",
+          500,
+          membershipTypesResult.error,
+        );
+      }
+
+      if (applicationsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Applications could not be loaded.",
+          500,
+          applicationsResult.error,
+        );
+      }
+
+      if (usersResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Linked accounts could not be loaded.",
+          500,
+          usersResult.error,
+        );
+      }
+
+      if (periodsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership periods could not be loaded.",
+          500,
+          periodsResult.error,
+        );
+      }
+
+      if (cardsResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership cards could not be loaded.",
+          500,
+          cardsResult.error,
+        );
+      }
+
+      const membershipTypeById = new Map(
+        (membershipTypesResult.data ?? []).map((membershipType) => [
+          membershipType.id,
+          membershipType,
+        ]),
+      );
+      const applicationById = new Map(
+        (applicationsResult.data ?? []).map((application) => [
+          application.id,
+          application,
+        ]),
+      );
+      const userById = new Map(
+        (usersResult.data ?? []).map((user) => [user.id, user]),
+      );
+      const periodsByMemberId = new Map<string, MembershipPeriod[]>();
+      const cardsByMemberId = new Map<string, MembershipCard[]>();
+      const renewedMemberIdSet = new Set(renewedMemberIds);
+
+      (periodsResult.data ?? []).forEach((period) => {
+        periodsByMemberId.set(period.member_id, [
+          ...(periodsByMemberId.get(period.member_id) ?? []),
+          period,
+        ]);
+      });
+
+      (cardsResult.data ?? []).forEach((card) => {
+        cardsByMemberId.set(card.member_id, [
+          ...(cardsByMemberId.get(card.member_id) ?? []),
+          card,
+        ]);
+      });
+
+      const totalCount = count ?? 0;
+
+      return {
+        members: members.map((member) => {
+          const summary = enrichMemberSummary({
+            member,
+            membershipType: membershipTypeById.get(member.membership_type_id),
+            application: member.membership_application_id
+              ? applicationById.get(member.membership_application_id)
+              : null,
+            user: member.user_id ? userById.get(member.user_id) : null,
+            periods: periodsByMemberId.get(member.id) ?? [],
+            cards: cardsByMemberId.get(member.id) ?? [],
+          });
+
+          return renewedMemberIdSet.has(member.id)
+            ? { ...summary, renewalStatus: "renewed_recently" }
+            : enrichRenewalSummary(summary, values.expiringSoonDays);
+        }),
+        totalCount,
+        page: values.page,
+        pageSize: values.pageSize,
+        pageCount: Math.max(1, Math.ceil(totalCount / values.pageSize)),
+        expiringSoonDays: values.expiringSoonDays,
+      };
+    },
+
     async getMemberForAdmin(params: {
       id: string;
       organisationId: string;
@@ -826,6 +1791,171 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         membershipPeriods: periods,
         membershipCards: cards.map(redactMembershipCard),
         auditLogs: auditLogsResult.data ?? [],
+      };
+    },
+
+    async getRenewalForAdmin(params: {
+      id: string;
+      organisationId: string;
+    }): Promise<MemberRenewalDetail> {
+      const member = await this.getMemberForAdmin(params);
+
+      return {
+        ...member,
+        renewalStatus: getRenewalStatus(member),
+      };
+    },
+
+    async renewMember(input: RenewMemberValues) {
+      const values = renewMemberSchema.parse(input);
+      const { data: organisation, error: organisationError } =
+        await repository.getActiveOrganisationById(values.organisationId);
+
+      if (organisationError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Organisation could not be checked.",
+          500,
+          organisationError,
+        );
+      }
+
+      if (!organisation) {
+        throw new AppError(
+          "FORBIDDEN",
+          "Renewals are not available for this organisation.",
+          403,
+        );
+      }
+
+      const { data: existingMember, error: existingMemberError } =
+        await repository.getMemberById({
+          id: values.memberId,
+          organisationId: values.organisationId,
+        });
+
+      if (existingMemberError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member could not be loaded.",
+          500,
+          existingMemberError,
+        );
+      }
+
+      if (!existingMember) {
+        throw new AppError("NOT_FOUND", "Member was not found.", 404);
+      }
+
+      if (existingMember.status === "cancelled") {
+        throw new AppError(
+          "CONFLICT",
+          "Cancelled members cannot be renewed.",
+          409,
+        );
+      }
+
+      if (existingMember.status === "pending") {
+        throw new AppError(
+          "CONFLICT",
+          "Pending members must be approved before renewal.",
+          409,
+        );
+      }
+
+      const { data: overlappingPeriods, error: overlapError } =
+        await repository.listOverlappingActiveMembershipPeriods({
+          organisationId: values.organisationId,
+          memberId: values.memberId,
+          startsAt: values.periodStartsAt.toISOString(),
+          endsAt: values.periodEndsAt.toISOString(),
+        });
+
+      if (overlapError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership periods could not be checked.",
+          500,
+          overlapError,
+        );
+      }
+
+      if ((overlappingPeriods ?? []).length > 0) {
+        throw new AppError(
+          "CONFLICT",
+          "Renewal dates overlap an existing active membership period.",
+          409,
+        );
+      }
+
+      const { data: membershipPeriod, error: periodError } =
+        await repository.createMembershipPeriod({
+          organisationId: values.organisationId,
+          memberId: values.memberId,
+          startsAt: values.periodStartsAt.toISOString(),
+          endsAt: values.periodEndsAt.toISOString(),
+          source: "admin_renewal",
+        });
+
+      if (periodError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Renewal period could not be created.",
+          500,
+          periodError,
+        );
+      }
+
+      const nextStatus =
+        existingMember.status === "suspended" ? "suspended" : "active";
+      const { data: updatedMember, error: updateError } =
+        await repository.updateMemberRenewal({
+          ...values,
+          status: nextStatus,
+        });
+
+      if (updateError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Member renewal could not be saved.",
+          500,
+          updateError,
+        );
+      }
+
+      const { error: auditError } = await repository.createAuditLog({
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "member_renewed",
+        entityType: "member",
+        entityId: values.memberId,
+        oldValues: {
+          status: existingMember.status,
+          expires_at: existingMember.expires_at,
+        },
+        newValues: {
+          status: updatedMember.status,
+          previous_expiry: existingMember.expires_at,
+          new_expiry: updatedMember.expires_at,
+          membership_period_id: membershipPeriod.id,
+          renewed_by: values.reviewedByUserId,
+          renewed_at: new Date().toISOString(),
+          notes: values.notes ?? null,
+        },
+      });
+
+      if (auditError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Renewal audit log could not be created.",
+          500,
+          auditError,
+        );
+      }
+
+      return {
+        member: updatedMember,
+        membershipPeriod,
       };
     },
 

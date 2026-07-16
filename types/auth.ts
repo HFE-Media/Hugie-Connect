@@ -20,6 +20,8 @@ export type Permission =
   | "admin:shell:view"
   | "membership:applications:manage"
   | "membership:members:manage"
+  | "membership:renew"
+  | "membership:verify"
   | "scanner:shell:view"
   | "users:roles:manage";
 

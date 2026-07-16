@@ -14,6 +14,7 @@ export default async function AdminShellPage() {
     "membership:applications:manage",
   );
   const showMembers = hasPermission(profile.roles, "membership:members:manage");
+  const showRenewals = hasPermission(profile.roles, "membership:renew");
 
   return (
     <main className="container py-8">
@@ -38,6 +39,11 @@ export default async function AdminShellPage() {
           {showMembers ? (
             <Button asChild variant="outline">
               <Link href="/admin/membership/members">Members</Link>
+            </Button>
+          ) : null}
+          {showRenewals ? (
+            <Button asChild variant="outline">
+              <Link href="/admin/membership/renewals">Renewals</Link>
             </Button>
           ) : null}
           <Button asChild variant="outline">

@@ -35,6 +35,13 @@ export const memberAdminStatusFilterSchema = z.enum([
   "expired",
 ]);
 
+export const membershipRenewalFilterSchema = z.enum([
+  "active",
+  "expiring_soon",
+  "expired",
+  "renewed_recently",
+]);
+
 export const createMembershipApplicationSchema = z.object({
   organisationId: z.string().uuid(),
   membershipTypeId: z.string().uuid(),
@@ -72,6 +79,34 @@ export const updateMemberStatusSchema = z.object({
   reviewedByUserId: z.string().uuid(),
   status: z.enum(["active", "suspended"]),
 });
+
+export const listAdminRenewalsSchema = z.object({
+  organisationId: z.string().uuid(),
+  filter: membershipRenewalFilterSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+  expiringSoonDays: z.coerce.number().int().min(1).max(365).default(30),
+});
+
+export const renewMemberSchema = z
+  .object({
+    organisationId: z.string().uuid(),
+    memberId: z.string().uuid(),
+    reviewedByUserId: z.string().uuid(),
+    periodStartsAt: z.coerce.date(),
+    periodEndsAt: z.coerce.date(),
+    notes: z.string().trim().max(1000).optional().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.periodStartsAt >= value.periodEndsAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Renewal end date must be after the start date.",
+        path: ["periodEndsAt"],
+      });
+    }
+  });
 
 export const updateMembershipApplicationReviewSchema = z
   .object({
@@ -125,6 +160,12 @@ export type ListAdminMembershipApplicationsValues = z.infer<
 export type ListAdminMembersValues = z.infer<typeof listAdminMembersSchema>;
 
 export type UpdateMemberStatusValues = z.infer<typeof updateMemberStatusSchema>;
+
+export type ListAdminRenewalsValues = z.infer<
+  typeof listAdminRenewalsSchema
+>;
+
+export type RenewMemberValues = z.infer<typeof renewMemberSchema>;
 
 export type UpdateMembershipApplicationReviewValues = z.infer<
   typeof updateMembershipApplicationReviewSchema

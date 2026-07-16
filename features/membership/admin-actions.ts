@@ -41,6 +41,29 @@ const updateMemberStatusFormSchema = z.object({
   status: z.enum(["active", "suspended"]),
 });
 
+const renewMemberFormSchema = z
+  .object({
+    memberId: z.string().uuid(),
+    periodStartsAt: z.coerce.date({
+      required_error: "Renewal start date is required.",
+      invalid_type_error: "Enter a valid renewal start date.",
+    }),
+    periodEndsAt: z.coerce.date({
+      required_error: "Renewal end date is required.",
+      invalid_type_error: "Enter a valid renewal end date.",
+    }),
+    notes: z.string().trim().max(1000).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.periodStartsAt >= value.periodEndsAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Renewal end date must be after the start date.",
+        path: ["periodEndsAt"],
+      });
+    }
+  });
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -59,6 +82,12 @@ function memberDetailPath(memberId: string, params: Record<string, string>) {
   return `/admin/membership/members/${memberId}?${searchParams.toString()}`;
 }
 
+function renewalDetailPath(memberId: string, params: Record<string, string>) {
+  const searchParams = new URLSearchParams(params);
+
+  return `/admin/membership/renewals/${memberId}?${searchParams.toString()}`;
+}
+
 async function getAdminReviewContext() {
   const profile = await requirePermission("membership:applications:manage");
   const service = createMembershipAdminService();
@@ -73,6 +102,60 @@ async function getMemberAdminContext() {
   const appUser = await service.getAppUserByAuthUserId(profile.id);
 
   return { service, appUser };
+}
+
+async function getRenewalAdminContext() {
+  const profile = await requirePermission("membership:renew");
+  const service = createMembershipAdminService();
+  const appUser = await service.getAppUserByAuthUserId(profile.id);
+
+  return { service, appUser };
+}
+
+export async function renewMemberAdminAction(formData: FormData) {
+  const result = renewMemberFormSchema.safeParse({
+    memberId: readString(formData, "memberId"),
+    periodStartsAt: readString(formData, "periodStartsAt"),
+    periodEndsAt: readString(formData, "periodEndsAt"),
+    notes: readString(formData, "notes"),
+  });
+
+  if (!result.success) {
+    const memberId = readString(formData, "memberId");
+    const message =
+      result.error.issues[0]?.message ?? "Check the renewal details.";
+    redirect(renewalDetailPath(memberId, { error: message }));
+  }
+
+  const { service, appUser } = await getRenewalAdminContext();
+
+  try {
+    await service.renewMember({
+      organisationId: appUser.organisation_id,
+      memberId: result.data.memberId,
+      reviewedByUserId: appUser.id,
+      periodStartsAt: result.data.periodStartsAt,
+      periodEndsAt: result.data.periodEndsAt,
+      notes: result.data.notes || null,
+    });
+
+    revalidatePath("/admin/membership/renewals");
+    revalidatePath(`/admin/membership/renewals/${result.data.memberId}`);
+    revalidatePath("/admin/membership/members");
+    revalidatePath(`/admin/membership/members/${result.data.memberId}`);
+  } catch (error) {
+    redirect(
+      renewalDetailPath(result.data.memberId, {
+        error: getSafeErrorMessage(error),
+      }),
+    );
+  }
+
+  redirect(
+    renewalDetailPath(result.data.memberId, {
+      success: "Membership renewed.",
+    }),
+  );
 }
 
 export async function updateMemberStatusAdminAction(formData: FormData) {

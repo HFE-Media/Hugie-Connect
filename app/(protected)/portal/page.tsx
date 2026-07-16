@@ -1,13 +1,21 @@
 import Link from "next/link";
-import { UserCircle } from "lucide-react";
+import { CreditCard, UserCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/services/auth/server";
+import { createMembershipService } from "@/services/membership/service";
+import { createSupabaseServerClient } from "@/services/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortalPage() {
   const profile = await requirePermission("portal:view");
+  const membershipService = createMembershipService(
+    await createSupabaseServerClient(),
+  );
+  const membershipSummary = await membershipService
+    .getOwnMembershipSummary(profile.id)
+    .catch(() => null);
 
   return (
     <main className="container py-8">
@@ -41,6 +49,28 @@ export default async function PortalPage() {
             </p>
           </div>
         </div>
+
+        {membershipSummary ? (
+          <div className="mt-6 rounded-xl border bg-background p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <CreditCard className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">My Membership</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {membershipSummary.membershipType.name} ·{" "}
+                    {membershipSummary.member.member_number}
+                  </p>
+                </div>
+              </div>
+              <Button asChild>
+                <Link href="/portal/membership">View card</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );
