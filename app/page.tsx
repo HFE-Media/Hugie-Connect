@@ -69,6 +69,9 @@ export default async function HomePage() {
                 <Button asChild variant="outline" size="lg">
                   <Link href="/membership/apply">Apply for membership</Link>
                 </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/events">View events</Link>
+                </Button>
               </div>
             </div>
 

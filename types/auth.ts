@@ -22,6 +22,8 @@ export type Permission =
   | "membership:members:manage"
   | "membership:renew"
   | "membership:cards:manage"
+  | "events:view"
+  | "events:manage"
   | "membership:verify"
   | "scanner:shell:view"
   | "users:roles:manage";
