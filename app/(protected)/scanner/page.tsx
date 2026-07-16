@@ -1,5 +1,7 @@
-import { ScanLine } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, ScanLine } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/services/auth/server";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +17,15 @@ export default async function ScannerShellPage() {
         </div>
         <h1 className="mt-5 text-2xl font-semibold">Scanner shell</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Gate access is protected for eligible roles. Scanner workflows,
-          events, ticket validation, and QR logic begin in later sprints.
+          Gate access is protected for eligible roles. Membership verification
+          is available separately from future event and ticket scanner flows.
         </p>
+        <Button asChild className="mt-5">
+          <Link href="/scanner/membership">
+            <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />
+            Verify membership QR
+          </Link>
+        </Button>
       </section>
     </main>
   );

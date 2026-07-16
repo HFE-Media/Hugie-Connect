@@ -27,6 +27,21 @@ export const memberStatusSchema = z.enum([
   "cancelled",
 ]);
 
+export const memberAdminStatusFilterSchema = z.enum([
+  "active",
+  "pending",
+  "suspended",
+  "inactive",
+  "expired",
+]);
+
+export const membershipRenewalFilterSchema = z.enum([
+  "active",
+  "expiring_soon",
+  "expired",
+  "renewed_recently",
+]);
+
 export const createMembershipApplicationSchema = z.object({
   organisationId: z.string().uuid(),
   membershipTypeId: z.string().uuid(),
@@ -40,6 +55,71 @@ export const createMembershipApplicationSchema = z.object({
 export const listMembershipApplicationsSchema = z.object({
   organisationId: z.string().uuid(),
   status: membershipApplicationStatusSchema.optional(),
+});
+
+export const listAdminMembershipApplicationsSchema = z.object({
+  organisationId: z.string().uuid(),
+  status: membershipApplicationStatusSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const listAdminMembersSchema = z.object({
+  organisationId: z.string().uuid(),
+  status: memberAdminStatusFilterSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export const updateMemberStatusSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  status: z.enum(["active", "suspended"]),
+});
+
+export const listAdminRenewalsSchema = z.object({
+  organisationId: z.string().uuid(),
+  filter: membershipRenewalFilterSchema.optional(),
+  search: z.string().trim().max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+  expiringSoonDays: z.coerce.number().int().min(1).max(365).default(30),
+});
+
+export const renewMemberSchema = z
+  .object({
+    organisationId: z.string().uuid(),
+    memberId: z.string().uuid(),
+    reviewedByUserId: z.string().uuid(),
+    periodStartsAt: z.coerce.date(),
+    periodEndsAt: z.coerce.date(),
+    notes: z.string().trim().max(1000).optional().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.periodStartsAt >= value.periodEndsAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Renewal end date must be after the start date.",
+        path: ["periodEndsAt"],
+      });
+    }
+  });
+
+export const revokeMembershipCardSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Enter an internal reason.").max(1000),
+});
+
+export const reissueMembershipCardSchema = z.object({
+  organisationId: z.string().uuid(),
+  memberId: z.string().uuid(),
+  reviewedByUserId: z.string().uuid(),
+  reason: z.string().trim().min(3, "Enter an internal reason.").max(1000),
 });
 
 export const updateMembershipApplicationReviewSchema = z
@@ -85,6 +165,28 @@ export type CreateMembershipApplicationValues = z.infer<
 
 export type ListMembershipApplicationsValues = z.infer<
   typeof listMembershipApplicationsSchema
+>;
+
+export type ListAdminMembershipApplicationsValues = z.infer<
+  typeof listAdminMembershipApplicationsSchema
+>;
+
+export type ListAdminMembersValues = z.infer<typeof listAdminMembersSchema>;
+
+export type UpdateMemberStatusValues = z.infer<typeof updateMemberStatusSchema>;
+
+export type ListAdminRenewalsValues = z.infer<
+  typeof listAdminRenewalsSchema
+>;
+
+export type RenewMemberValues = z.infer<typeof renewMemberSchema>;
+
+export type RevokeMembershipCardValues = z.infer<
+  typeof revokeMembershipCardSchema
+>;
+
+export type ReissueMembershipCardValues = z.infer<
+  typeof reissueMembershipCardSchema
 >;
 
 export type UpdateMembershipApplicationReviewValues = z.infer<

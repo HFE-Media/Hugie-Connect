@@ -2,12 +2,19 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminShellPage() {
-  await requirePermission("admin:shell:view");
+  const profile = await requirePermission("admin:shell:view");
+  const showMembershipApplications = hasPermission(
+    profile.roles,
+    "membership:applications:manage",
+  );
+  const showMembers = hasPermission(profile.roles, "membership:members:manage");
+  const showRenewals = hasPermission(profile.roles, "membership:renew");
 
   return (
     <main className="container py-8">
@@ -21,9 +28,28 @@ export default async function AdminShellPage() {
           Operational dashboards and business modules are intentionally outside
           Sprint 01.
         </p>
-        <Button asChild className="mt-6" variant="outline">
-          <Link href="/admin/users">Role foundation</Link>
-        </Button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {showMembershipApplications ? (
+            <Button asChild>
+              <Link href="/admin/membership/applications">
+                Membership applications
+              </Link>
+            </Button>
+          ) : null}
+          {showMembers ? (
+            <Button asChild variant="outline">
+              <Link href="/admin/membership/members">Members</Link>
+            </Button>
+          ) : null}
+          {showRenewals ? (
+            <Button asChild variant="outline">
+              <Link href="/admin/membership/renewals">Renewals</Link>
+            </Button>
+          ) : null}
+          <Button asChild variant="outline">
+            <Link href="/admin/users">Role foundation</Link>
+          </Button>
+        </div>
       </section>
     </main>
   );

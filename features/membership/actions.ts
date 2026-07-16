@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { requireProfile } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
 import type { MembershipApplicationActionState } from "@/features/membership/state";
 
@@ -81,4 +83,27 @@ export async function submitMembershipApplicationAction(
   }
 
   redirect("/membership/apply/success");
+}
+
+export async function linkOwnMembershipAction() {
+  const profile = await requireProfile();
+  const service = createMembershipAdminService();
+  let status = "error";
+
+  try {
+    const result = await service.linkOwnMembershipByEmail({
+      authUserId: profile.id,
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+    });
+
+    status = result.status;
+    revalidatePath("/portal");
+    revalidatePath("/portal/membership");
+  } catch {
+    status = "error";
+  }
+
+  redirect(`/portal/membership?link=${status}`);
 }

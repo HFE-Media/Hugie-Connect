@@ -18,6 +18,11 @@ export type Permission =
   | "portal:view"
   | "profile:view_own"
   | "admin:shell:view"
+  | "membership:applications:manage"
+  | "membership:members:manage"
+  | "membership:renew"
+  | "membership:cards:manage"
+  | "membership:verify"
   | "scanner:shell:view"
   | "users:roles:manage";
 

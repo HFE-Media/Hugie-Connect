@@ -5,6 +5,8 @@ import { Building2 } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requireProfile } from "@/services/auth/server";
+import { createMembershipService } from "@/services/membership/service";
+import { createSupabaseServerClient } from "@/services/supabase/server";
 
 type ProtectedLayoutProps = {
   children: ReactNode;
@@ -18,6 +20,13 @@ export default async function ProtectedLayout({
   const profile = await requireProfile();
   const showAdmin = hasPermission(profile.roles, "admin:shell:view");
   const showScanner = hasPermission(profile.roles, "scanner:shell:view");
+  const membershipService = createMembershipService(
+    await createSupabaseServerClient(),
+  );
+  const hasMembership = await membershipService
+    .getOwnMembershipSummary(profile.id)
+    .then(Boolean)
+    .catch(() => false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,6 +53,14 @@ export default async function ProtectedLayout({
             >
               Portal
             </Link>
+            {hasMembership ? (
+              <Link
+                href="/portal/membership"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                My Membership
+              </Link>
+            ) : null}
             {showAdmin ? (
               <Link
                 href="/admin"
