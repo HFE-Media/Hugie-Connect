@@ -627,6 +627,7 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       const [
         organisationResult,
         membershipTypeResult,
+        applicationResult,
         periodsResult,
         cardsResult,
       ] = await Promise.all([
@@ -635,6 +636,12 @@ export function createMembershipService(client: MembershipRepositoryClient) {
           id: member.membership_type_id,
           organisationId: member.organisation_id,
         }),
+        member.membership_application_id
+          ? repository.getMembershipApplicationById({
+              id: member.membership_application_id,
+              organisationId: member.organisation_id,
+            })
+          : Promise.resolve({ data: null, error: null }),
         repository.listMembershipPeriodsByMemberIds({
           organisationId: member.organisation_id,
           memberIds: [member.id],
@@ -672,6 +679,15 @@ export function createMembershipService(client: MembershipRepositoryClient) {
         );
       }
 
+      if (applicationResult.error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Membership application could not be loaded.",
+          500,
+          applicationResult.error,
+        );
+      }
+
       if (cardsResult.error) {
         throw new AppError(
           "INTERNAL_ERROR",
@@ -688,6 +704,7 @@ export function createMembershipService(client: MembershipRepositoryClient) {
       return {
         member,
         memberUser: appUser,
+        membershipApplication: applicationResult.data,
         organisation: organisationResult.data,
         membershipType: membershipTypeResult.data,
         currentPeriod: getCurrentPeriod(periodsResult.data ?? []),

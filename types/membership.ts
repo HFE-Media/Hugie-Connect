@@ -44,6 +44,7 @@ export type MembershipCardDisplay = {
 export type MemberMembershipSummary = {
   member: Member;
   memberUser: MembershipUser;
+  membershipApplication: MembershipApplication | null;
   organisation: MembershipOrganisation;
   membershipType: MembershipType;
   currentPeriod: MembershipPeriod | null;

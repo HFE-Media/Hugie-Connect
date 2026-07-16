@@ -48,12 +48,40 @@ function formatBillingCycle(value: string | null) {
   return value.replace("_", " ");
 }
 
-function getMemberName(summary: MemberMembershipSummary) {
-  const name = [summary.memberUser.first_name, summary.memberUser.last_name]
-    .filter(Boolean)
-    .join(" ");
+function joinName(firstName?: string | null, lastName?: string | null) {
+  return [firstName, lastName].filter(Boolean).join(" ").trim();
+}
 
-  return name || summary.memberUser.email;
+function getExistingMemberDisplayName(summary: MemberMembershipSummary) {
+  const memberWithOptionalDisplayName = summary.member as typeof summary.member & {
+    display_name?: string | null;
+    name?: string | null;
+  };
+
+  return (
+    memberWithOptionalDisplayName.display_name?.trim() ||
+    memberWithOptionalDisplayName.name?.trim() ||
+    ""
+  );
+}
+
+function getMemberName(summary: MemberMembershipSummary) {
+  const applicationName = joinName(
+    summary.membershipApplication?.first_name,
+    summary.membershipApplication?.last_name,
+  );
+  const linkedUserName = joinName(
+    summary.memberUser.first_name,
+    summary.memberUser.last_name,
+  );
+  const existingMemberDisplayName = getExistingMemberDisplayName(summary);
+
+  return (
+    applicationName ||
+    linkedUserName ||
+    existingMemberDisplayName ||
+    summary.memberUser.email
+  );
 }
 
 function StatusBadge({
@@ -99,6 +127,7 @@ export function MemberMembershipSummaryCard({
   const fields = [
     ["Membership type", membershipType.name],
     ["Member number", member.member_number],
+    ["Email", summary.membershipApplication?.email ?? summary.memberUser.email],
     ["Billing cycle", formatBillingCycle(membershipType.billing_cycle)],
     ["Joined", formatDate(member.joined_at)],
     ["Approved", formatDate(member.approved_at)],
