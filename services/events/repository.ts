@@ -74,8 +74,8 @@ export function createEventsRepository(client: EventsRepositoryClient) {
       search?: string;
       status?: EventStatus;
       categoryId?: string;
-      startsFrom?: string;
-      startsBefore?: string;
+      endsFrom?: string;
+      endsBefore?: string;
       rangeFrom: number;
       rangeTo: number;
     }) {
@@ -100,12 +100,12 @@ export function createEventsRepository(client: EventsRepositoryClient) {
         query = query.eq("category_id", params.categoryId);
       }
 
-      if (params.startsFrom) {
-        query = query.gte("starts_at", params.startsFrom);
+      if (params.endsFrom) {
+        query = query.gte("ends_at", params.endsFrom);
       }
 
-      if (params.startsBefore) {
-        query = query.lt("starts_at", params.startsBefore);
+      if (params.endsBefore) {
+        query = query.lt("ends_at", params.endsBefore);
       }
 
       return query;
@@ -114,7 +114,7 @@ export function createEventsRepository(client: EventsRepositoryClient) {
     async listPublicEvents(params: {
       search?: string;
       categoryId?: string;
-      startsFrom: string;
+      endsFrom: string;
       rangeFrom: number;
       rangeTo: number;
     }) {
@@ -124,7 +124,7 @@ export function createEventsRepository(client: EventsRepositoryClient) {
           count: "exact",
         })
         .eq("status", "published")
-        .gte("ends_at", params.startsFrom)
+        .gte("ends_at", params.endsFrom)
         .order("starts_at", { ascending: true })
         .range(params.rangeFrom, params.rangeTo);
 

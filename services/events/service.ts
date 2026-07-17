@@ -108,6 +108,21 @@ function pageRange(page: number, pageSize: number) {
   return { from, to: from + pageSize - 1 };
 }
 
+function eventDateWindow(
+  dateFilter: "upcoming" | "past" | "all",
+  nowIso: string,
+) {
+  if (dateFilter === "upcoming") {
+    return { endsFrom: nowIso };
+  }
+
+  if (dateFilter === "past") {
+    return { endsBefore: nowIso };
+  }
+
+  return {};
+}
+
 async function ensureUniqueSlug(params: {
   repository: ReturnType<typeof createEventsRepository>;
   organisationId: string;
@@ -169,7 +184,7 @@ export function createEventsService(client: EventsRepositoryClient) {
         repository.listPublicEvents({
           search: values.search,
           categoryId: values.categoryId,
-          startsFrom: new Date().toISOString(),
+          endsFrom: new Date().toISOString(),
           rangeFrom: from,
           rangeTo: to,
         }),
@@ -275,14 +290,14 @@ export function createEventsAdminService() {
       const values = listAdminEventsSchema.parse(input);
       const { from, to } = pageRange(values.page, values.pageSize);
       const now = new Date().toISOString();
+      const dateWindow = eventDateWindow(values.dateFilter, now);
       const [eventsResult, categoriesResult] = await Promise.all([
         repository.listAdminEvents({
           organisationId: values.organisationId,
           search: values.search,
           status: values.status,
           categoryId: values.categoryId,
-          startsFrom: values.dateFilter === "upcoming" ? now : undefined,
-          startsBefore: values.dateFilter === "past" ? now : undefined,
+          ...dateWindow,
           rangeFrom: from,
           rangeTo: to,
         }),
