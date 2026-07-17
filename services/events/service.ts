@@ -27,6 +27,7 @@ import type {
   Event,
   AdminEventTicket,
   EventsAdminPage,
+  EventTicketScanResult,
   EventTicket,
   EventTicketType,
   EventTicketTypeWithAvailability,
@@ -113,6 +114,32 @@ function safeTicketSnapshot(ticket: EventTicket) {
 
 function createTicketQrValue(ticket: Pick<EventTicket, "status" | "qr_token">) {
   return ticket.status === "issued" ? `ticket:${ticket.qr_token}` : null;
+}
+
+function parseTicketQrPayload(payload: string) {
+  const trimmed = payload.trim();
+
+  if (!trimmed.startsWith("ticket:")) {
+    return null;
+  }
+
+  const token = trimmed.slice("ticket:".length).trim();
+
+  return token.length > 0 ? token : null;
+}
+
+function createTicketScanResult(input: EventTicketScanResult) {
+  return input;
+}
+
+function isEventActiveForScanning(event: Event) {
+  const now = new Date();
+
+  return (
+    event.status === "published" &&
+    now >= new Date(event.starts_at) &&
+    now <= new Date(event.ends_at)
+  );
 }
 
 function generateQrToken() {
@@ -552,6 +579,26 @@ export function createEventsAdminService() {
       >).map(toAdminEventTicket);
     },
 
+    async listEventsForTicketScanner(organisationId: string) {
+      const { data, error } = await repository.listScannerEvents({
+        organisationId,
+        endsFrom: new Date().toISOString(),
+        rangeFrom: 0,
+        rangeTo: 50,
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Scanner events could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return (data ?? []).map(toEventWithCategory);
+    },
+
     async listTicketsForAuthenticatedUser(
       authUserId: string,
     ): Promise<PortalTicketsPage> {
@@ -983,6 +1030,202 @@ export function createEventsAdminService() {
       });
 
       return safeTicketSnapshot(data);
+    },
+
+    async scanEventTicket(input: {
+      payload: string;
+      eventId: string;
+      verifierAuthUserId: string;
+      canScanAllOrganisations: boolean;
+    }): Promise<EventTicketScanResult> {
+      const qrToken = parseTicketQrPayload(input.payload);
+
+      if (!qrToken) {
+        return createTicketScanResult({
+          tone: "invalid",
+          title: "Invalid ticket QR",
+          message: "This is not a recognised event ticket QR code.",
+        });
+      }
+
+      const verifier = await this.getAppUserByAuthUserId(input.verifierAuthUserId);
+      const { data: selectedEvent, error: selectedEventError } =
+        await repository.getEventById({
+          organisationId: verifier.organisation_id,
+          eventId: input.eventId,
+        });
+
+      if (selectedEventError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Selected event could not be checked.",
+          500,
+          selectedEventError,
+        );
+      }
+
+      if (!selectedEvent) {
+        return createTicketScanResult({
+          tone: "invalid",
+          title: "Wrong organisation",
+          message: "This event is not available to this scanner account.",
+        });
+      }
+
+      const { data: ticket, error: ticketError } =
+        await repository.getTicketByQrToken(qrToken);
+
+      if (ticketError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket could not be checked.",
+          500,
+          ticketError,
+        );
+      }
+
+      if (!ticket) {
+        return createTicketScanResult({
+          tone: "invalid",
+          title: "Invalid ticket",
+          message: "No event ticket matched this QR code.",
+        });
+      }
+
+      if (
+        !input.canScanAllOrganisations &&
+        ticket.organisation_id !== verifier.organisation_id
+      ) {
+        return createTicketScanResult({
+          tone: "invalid",
+          title: "Wrong organisation",
+          message: "This ticket belongs to a different organisation.",
+        });
+      }
+
+      if (ticket.event_id !== input.eventId) {
+        return createTicketScanResult({
+          tone: "invalid",
+          title: "Wrong event",
+          message: "This ticket is valid for a different event.",
+          ticketNumber: ticket.ticket_number,
+          holderName: ticket.holder_name,
+          status: ticket.status,
+        });
+      }
+
+      const event = toEventWithCategory(selectedEvent);
+      const { data: ticketType, error: ticketTypeError } =
+        await repository.getTicketTypeById({
+          organisationId: ticket.organisation_id,
+          eventId: ticket.event_id,
+          ticketTypeId: ticket.ticket_type_id,
+        });
+
+      if (ticketTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type could not be checked.",
+          500,
+          ticketTypeError,
+        );
+      }
+
+      const baseResult = {
+        eventName: event.title,
+        eventDate: event.starts_at,
+        venue: event.venue,
+        ticketTypeName: ticketType?.name,
+        ticketNumber: ticket.ticket_number,
+        holderName: ticket.holder_name,
+        status: ticket.status,
+      };
+
+      if (ticket.status === "used") {
+        return createTicketScanResult({
+          ...baseResult,
+          tone: "warning",
+          title: "Already used",
+          message: ticket.checked_in_at
+            ? `This ticket was already checked in at ${new Intl.DateTimeFormat(
+                "en-ZA",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                },
+              ).format(new Date(ticket.checked_in_at))}.`
+            : "This ticket has already been used.",
+        });
+      }
+
+      if (ticket.status === "cancelled") {
+        return createTicketScanResult({
+          ...baseResult,
+          tone: "invalid",
+          title: "Cancelled ticket",
+          message: "This ticket has been cancelled and cannot be admitted.",
+        });
+      }
+
+      if (ticket.status === "refunded") {
+        return createTicketScanResult({
+          ...baseResult,
+          tone: "invalid",
+          title: "Refunded ticket",
+          message: "This ticket has been refunded and cannot be admitted.",
+        });
+      }
+
+      if (!isEventActiveForScanning(event)) {
+        return createTicketScanResult({
+          ...baseResult,
+          tone: "warning",
+          title: "Event not active",
+          message: "Tickets can only be checked in while the event is active.",
+        });
+      }
+
+      const { data: checkedInTicket, error: checkInError } =
+        await repository.updateTicket({
+          organisationId: ticket.organisation_id,
+          eventId: ticket.event_id,
+          ticketId: ticket.id,
+          values: {
+            status: "used",
+            checked_in_at: new Date().toISOString(),
+            checked_in_by: verifier.id,
+          },
+        });
+
+      if (checkInError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket could not be checked in.",
+          500,
+          checkInError,
+        );
+      }
+
+      await createEventsAuditLog({
+        repository,
+        organisationId: ticket.organisation_id,
+        userId: verifier.id,
+        action: "event_ticket_checked_in",
+        entityType: "event_ticket",
+        entityId: ticket.id,
+        oldValues: safeTicketSnapshot(ticket),
+        newValues: safeTicketSnapshot(checkedInTicket),
+      });
+
+      return createTicketScanResult({
+        ...baseResult,
+        status: checkedInTicket.status,
+        tone: "valid",
+        title: "Valid ticket",
+        message: "Ticket checked in successfully.",
+      });
     },
 
     async saveEvent(input: EventEditorValues) {

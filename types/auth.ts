@@ -26,6 +26,7 @@ export type Permission =
   | "events:manage"
   | "events:tickets:view"
   | "events:tickets:manage"
+  | "events:tickets:scan"
   | "membership:verify"
   | "scanner:shell:view"
   | "users:roles:manage";

@@ -119,6 +119,22 @@ export function createEventsRepository(client: EventsRepositoryClient) {
       return query;
     },
 
+    async listScannerEvents(params: {
+      organisationId: string;
+      endsFrom: string;
+      rangeFrom: number;
+      rangeTo: number;
+    }) {
+      return client
+        .from("events")
+        .select("*, category:event_categories!events_category_organisation_fk(*)")
+        .eq("organisation_id", params.organisationId)
+        .not("status", "in", "(cancelled,completed)")
+        .gte("ends_at", params.endsFrom)
+        .order("starts_at", { ascending: true })
+        .range(params.rangeFrom, params.rangeTo);
+    },
+
     async listPublicEvents(params: {
       search?: string;
       categoryId?: string;
@@ -252,6 +268,14 @@ export function createEventsRepository(client: EventsRepositoryClient) {
         .maybeSingle();
     },
 
+    async getTicketByQrToken(qrToken: string) {
+      return client
+        .from("event_tickets")
+        .select("*")
+        .eq("qr_token", qrToken)
+        .maybeSingle();
+    },
+
     async updateTicket(params: {
       organisationId: string;
       eventId: string;
@@ -318,6 +342,14 @@ export function createEventsRepository(client: EventsRepositoryClient) {
         .select("id, email")
         .eq("organisation_id", params.organisationId)
         .ilike("email", params.email)
+        .maybeSingle();
+    },
+
+    async getOrganisationById(organisationId: string) {
+      return client
+        .from("organisations")
+        .select("id, name, status")
+        .eq("id", organisationId)
         .maybeSingle();
     },
 

@@ -52,3 +52,18 @@ export type PublicEventsPage = {
 export type PortalTicketsPage = {
   tickets: SafeEventTicket[];
 };
+
+export type EventTicketScanTone = "valid" | "warning" | "invalid";
+
+export type EventTicketScanResult = {
+  tone: EventTicketScanTone;
+  title: string;
+  message: string;
+  eventName?: string;
+  eventDate?: string;
+  venue?: string | null;
+  ticketTypeName?: string;
+  ticketNumber?: string;
+  holderName?: string;
+  status?: EventTicketStatus;
+};
