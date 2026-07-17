@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 
 import { AdminEventForm } from "@/components/events/admin-event-form";
+import { AdminTicketManagement } from "@/components/events/admin-ticket-management";
 import {
   EventStatusBadge,
   EventVisibilityBadge,
@@ -38,12 +39,20 @@ export default async function AdminEventDetailPage({
   const profile = await requirePermission("events:manage");
   const service = createEventsAdminService();
   const appUser = await service.getAppUserByAuthUserId(profile.id);
-  const [event, categories] = await Promise.all([
+  const [event, categories, ticketTypes, tickets] = await Promise.all([
     service.getEventForAdmin({
       organisationId: appUser.organisation_id,
       eventId: id,
     }),
     service.listCategories(appUser.organisation_id),
+    service.listTicketTypesForAdmin({
+      organisationId: appUser.organisation_id,
+      eventId: id,
+    }),
+    service.listTicketsForAdmin({
+      organisationId: appUser.organisation_id,
+      eventId: id,
+    }),
   ]);
 
   return (
@@ -104,6 +113,12 @@ export default async function AdminEventDetailPage({
 
         <AdminEventForm categories={categories} event={event} />
       </section>
+
+      <AdminTicketManagement
+        eventId={event.id}
+        ticketTypes={ticketTypes}
+        tickets={tickets}
+      />
     </main>
   );
 }

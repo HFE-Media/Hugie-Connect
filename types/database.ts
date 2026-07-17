@@ -329,6 +329,88 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
         Relationships: [];
       };
+      event_ticket_types: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          event_id: string;
+          name: string;
+          description: string | null;
+          price: number;
+          currency: string;
+          quantity_available: number | null;
+          sales_start_at: string | null;
+          sales_end_at: string | null;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          event_id: string;
+          name: string;
+          description?: string | null;
+          price?: number;
+          currency?: string;
+          quantity_available?: number | null;
+          sales_start_at?: string | null;
+          sales_end_at?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["event_ticket_types"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      event_tickets: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          event_id: string;
+          ticket_type_id: string;
+          purchaser_user_id: string | null;
+          holder_name: string;
+          holder_email: string | null;
+          ticket_number: string;
+          qr_token: string;
+          status: "issued" | "cancelled" | "used" | "refunded";
+          issued_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          checked_in_by: string | null;
+          created_by: string | null;
+          internal_note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          event_id: string;
+          ticket_type_id: string;
+          purchaser_user_id?: string | null;
+          holder_name: string;
+          holder_email?: string | null;
+          ticket_number: string;
+          qr_token: string;
+          status?: "issued" | "cancelled" | "used" | "refunded";
+          issued_at?: string;
+          cancelled_at?: string | null;
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
+          created_by?: string | null;
+          internal_note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_tickets"]["Insert"]>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;
@@ -367,6 +449,10 @@ export type Database = {
         Returns: string | null;
       };
       current_app_user_organisation_id: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
+      current_app_user_email: {
         Args: Record<string, never>;
         Returns: string | null;
       };

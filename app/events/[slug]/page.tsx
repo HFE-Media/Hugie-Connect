@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, MapPin, Ticket } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 
 import { EventVisibilityBadge } from "@/components/events/event-status-badge";
+import { PublicEventTicketTypes } from "@/components/events/public-event-ticket-types";
 import { Button } from "@/components/ui/button";
 import { createEventsService } from "@/services/events/service";
 import { createSupabaseServerClient } from "@/services/supabase/server";
@@ -28,14 +29,6 @@ function formatDateRange(startsAt: string, endsAt: string) {
   )}`;
 }
 
-function capacityLabel(capacity: number | null) {
-  if (!capacity) {
-    return "Capacity confirmed by organiser";
-  }
-
-  return `${capacity} capacity`;
-}
-
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
   const { slug } = await params;
   const service = createEventsService(await createSupabaseServerClient());
@@ -44,6 +37,8 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   if (!event || event.status !== "published") {
     notFound();
   }
+
+  const ticketTypes = await service.listPublicTicketTypes(event.id);
 
   return (
     <main className="min-h-screen bg-background">
@@ -106,19 +101,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             </div>
           </section>
 
-          <aside className="rounded-2xl border bg-card p-5 shadow-soft sm:p-6 lg:self-start">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Ticket className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <h2 className="mt-4 text-lg font-semibold">Tickets</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {capacityLabel(event.capacity)}. Ticket types and online
-              purchasing are coming in the ticketing sprint.
-            </p>
-            <Button className="mt-5 w-full" disabled>
-              Tickets coming next
-            </Button>
-          </aside>
+          <PublicEventTicketTypes
+            ticketTypes={ticketTypes}
+            capacity={event.capacity}
+          />
         </article>
       </div>
     </main>

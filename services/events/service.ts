@@ -1,13 +1,20 @@
+import { randomBytes } from "node:crypto";
+
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
-  eventEditorSchema,
+  cancelTicketSchema,
   listAdminEventsSchema,
   listPublicEventsSchema,
+  updateTicketTypeActiveSchema,
   updateEventStatusSchema,
+  type CancelTicketValues,
   type EventEditorValues,
+  type IssueTicketsValues,
   type ListAdminEventsValues,
   type ListPublicEventsValues,
+  type TicketTypeEditorValues,
+  type UpdateTicketTypeActiveValues,
   type UpdateEventStatusValues,
 } from "@/features/events/schemas";
 import {
@@ -18,9 +25,15 @@ import { createSupabaseAdminClient } from "@/services/supabase/admin";
 import type { Database } from "@/types/database";
 import type {
   Event,
+  AdminEventTicket,
   EventsAdminPage,
+  EventTicket,
+  EventTicketType,
+  EventTicketTypeWithAvailability,
   EventWithCategory,
+  PortalTicketsPage,
   PublicEventsPage,
+  SafeEventTicket,
 } from "@/types/events";
 
 type AppUser = Database["public"]["Tables"]["users"]["Row"] & {
@@ -73,6 +86,85 @@ function safeEventSnapshot(event: Event) {
   };
 }
 
+function safeTicketTypeSnapshot(ticketType: EventTicketType) {
+  return {
+    event_id: ticketType.event_id,
+    name: ticketType.name,
+    price: ticketType.price,
+    currency: ticketType.currency,
+    quantity_available: ticketType.quantity_available,
+    sales_start_at: ticketType.sales_start_at,
+    sales_end_at: ticketType.sales_end_at,
+    active: ticketType.active,
+    sort_order: ticketType.sort_order,
+  };
+}
+
+function safeTicketSnapshot(ticket: EventTicket) {
+  return {
+    event_id: ticket.event_id,
+    ticket_type_id: ticket.ticket_type_id,
+    ticket_number: ticket.ticket_number,
+    status: ticket.status,
+    holder_email: ticket.holder_email,
+    purchaser_user_id: ticket.purchaser_user_id,
+  };
+}
+
+function createTicketQrValue(ticket: Pick<EventTicket, "status" | "qr_token">) {
+  return ticket.status === "issued" ? `ticket:${ticket.qr_token}` : null;
+}
+
+function generateQrToken() {
+  return randomBytes(32).toString("hex");
+}
+
+function generateTicketNumber() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const suffix = randomBytes(4).toString("hex").toUpperCase();
+
+  return `TKT-${timestamp}-${suffix}`;
+}
+
+function toTicketTypeWithAvailability(
+  ticketType: EventTicketType,
+  issuedCount: number,
+): EventTicketTypeWithAvailability {
+  return {
+    ...ticketType,
+    issued_count: issuedCount,
+    remaining_quantity:
+      ticketType.quantity_available === null
+        ? null
+        : Math.max(ticketType.quantity_available - issuedCount, 0),
+  };
+}
+
+function toAdminEventTicket(value: EventTicket & { ticket_type?: EventTicketType | null }) {
+  const { qr_token: _qrToken, ticket_type, ...ticket } = value;
+
+  return {
+    ...ticket,
+    ticket_type: ticket_type ?? null,
+  } as AdminEventTicket;
+}
+
+function toSafeEventTicket(
+  value: EventTicket & {
+    event?: Event | null;
+    ticket_type?: EventTicketType | null;
+  },
+): SafeEventTicket {
+  const { qr_token: _qrToken, event, ticket_type, ...ticket } = value;
+
+  return {
+    ...ticket,
+    qr_value: createTicketQrValue(value),
+    event: event ?? null,
+    ticket_type: ticket_type ?? null,
+  } as SafeEventTicket;
+}
+
 async function createEventAuditLog(params: {
   repository: ReturnType<typeof createEventsRepository>;
   organisationId: string;
@@ -87,6 +179,36 @@ async function createEventAuditLog(params: {
     userId: params.userId,
     action: params.action,
     entityType: "event",
+    entityId: params.entityId,
+    oldValues: params.oldValues,
+    newValues: params.newValues,
+  });
+
+  if (error) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "Event audit log could not be created.",
+      500,
+      error,
+    );
+  }
+}
+
+async function createEventsAuditLog(params: {
+  repository: ReturnType<typeof createEventsRepository>;
+  organisationId: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  oldValues?: Database["public"]["Tables"]["audit_logs"]["Insert"]["old_values"];
+  newValues?: Database["public"]["Tables"]["audit_logs"]["Insert"]["new_values"];
+}) {
+  const { error } = await params.repository.createAuditLog({
+    organisationId: params.organisationId,
+    userId: params.userId,
+    action: params.action,
+    entityType: params.entityType,
     entityId: params.entityId,
     oldValues: params.oldValues,
     newValues: params.newValues,
@@ -237,6 +359,21 @@ export function createEventsService(client: EventsRepositoryClient) {
 
       return data ? toEventWithCategory(data) : null;
     },
+
+    async listPublicTicketTypes(eventId: string) {
+      const { data, error } = await repository.listPublicTicketTypes({ eventId });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket information could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return data ?? [];
+    },
   };
 }
 
@@ -351,6 +488,501 @@ export function createEventsAdminService() {
       }
 
       return toEventWithCategory(data);
+    },
+
+    async listTicketTypesForAdmin(params: {
+      organisationId: string;
+      eventId: string;
+    }): Promise<EventTicketTypeWithAvailability[]> {
+      const { data, error } = await repository.listTicketTypesForEvent(params);
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket types could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      const ticketTypes = data ?? [];
+      const counts = await Promise.all(
+        ticketTypes.map(async (ticketType) => {
+          const { count, error: countError } =
+            await repository.countIssuedTicketsForType({
+              organisationId: params.organisationId,
+              ticketTypeId: ticketType.id,
+            });
+
+          if (countError) {
+            throw new AppError(
+              "INTERNAL_ERROR",
+              "Ticket availability could not be loaded.",
+              500,
+              countError,
+            );
+          }
+
+          return count ?? 0;
+        }),
+      );
+
+      return ticketTypes.map((ticketType, index) =>
+        toTicketTypeWithAvailability(ticketType, counts[index] ?? 0),
+      );
+    },
+
+    async listTicketsForAdmin(params: {
+      organisationId: string;
+      eventId: string;
+    }): Promise<AdminEventTicket[]> {
+      const { data, error } = await repository.listTicketsForEvent(params);
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Tickets could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return ((data ?? []) as unknown as Array<
+        EventTicket & { ticket_type?: EventTicketType | null }
+      >).map(toAdminEventTicket);
+    },
+
+    async listTicketsForAuthenticatedUser(
+      authUserId: string,
+    ): Promise<PortalTicketsPage> {
+      const appUser = await this.getAppUserByAuthUserId(authUserId);
+      const { data, error } = await repository.listTicketsForUser({
+        organisationId: appUser.organisation_id,
+        userId: appUser.id,
+        email: appUser.email,
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Your tickets could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return {
+        tickets: ((data ?? []) as unknown as Array<
+          EventTicket & {
+            event?: Event | null;
+            ticket_type?: EventTicketType | null;
+          }
+        >).map(toSafeEventTicket),
+      };
+    },
+
+    async getTicketForAuthenticatedUser(params: {
+      authUserId: string;
+      ticketId: string;
+    }): Promise<SafeEventTicket | null> {
+      const appUser = await this.getAppUserByAuthUserId(params.authUserId);
+      const { data, error } = await repository.getTicketForUser({
+        organisationId: appUser.organisation_id,
+        ticketId: params.ticketId,
+        userId: appUser.id,
+        email: appUser.email,
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Your ticket could not be loaded.",
+          500,
+          error,
+        );
+      }
+
+      return data
+        ? toSafeEventTicket(
+            data as unknown as EventTicket & {
+              event?: Event | null;
+              ticket_type?: EventTicketType | null;
+            },
+          )
+        : null;
+    },
+
+    async saveTicketType(input: TicketTypeEditorValues) {
+      const values = input;
+      const event = await this.getEventForAdmin({
+        organisationId: values.organisationId,
+        eventId: values.eventId,
+      });
+
+      if (event.status === "cancelled" || event.status === "completed") {
+        throw new AppError(
+          "CONFLICT",
+          "Ticket types cannot be changed for cancelled or completed events.",
+          409,
+        );
+      }
+
+      const payload = {
+        organisation_id: values.organisationId,
+        event_id: values.eventId,
+        name: values.name,
+        description: values.description,
+        price: values.price,
+        currency: values.currency,
+        quantity_available: values.quantityAvailable,
+        sales_start_at: values.salesStartAt?.toISOString() ?? null,
+        sales_end_at: values.salesEndAt?.toISOString() ?? null,
+        sort_order: values.sortOrder,
+      };
+
+      if (!values.ticketTypeId) {
+        const { data, error } = await repository.createTicketType(payload);
+
+        if (error) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Ticket type could not be created.",
+            500,
+            error,
+          );
+        }
+
+        await createEventsAuditLog({
+          repository,
+          organisationId: values.organisationId,
+          userId: values.reviewedByUserId,
+          action: "event_ticket_type_created",
+          entityType: "event_ticket_type",
+          entityId: data.id,
+          newValues: safeTicketTypeSnapshot(data),
+        });
+
+        return data;
+      }
+
+      const { data: existing, error: existingError } =
+        await repository.getTicketTypeById({
+          organisationId: values.organisationId,
+          eventId: values.eventId,
+          ticketTypeId: values.ticketTypeId,
+        });
+
+      if (existingError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type could not be checked.",
+          500,
+          existingError,
+        );
+      }
+
+      if (!existing) {
+        throw new AppError("NOT_FOUND", "Ticket type was not found.", 404);
+      }
+
+      const { data, error } = await repository.updateTicketType({
+        organisationId: values.organisationId,
+        eventId: values.eventId,
+        ticketTypeId: values.ticketTypeId,
+        values: payload,
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type could not be updated.",
+          500,
+          error,
+        );
+      }
+
+      await createEventsAuditLog({
+        repository,
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "event_ticket_type_updated",
+        entityType: "event_ticket_type",
+        entityId: data.id,
+        oldValues: safeTicketTypeSnapshot(existing),
+        newValues: safeTicketTypeSnapshot(data),
+      });
+
+      return data;
+    },
+
+    async updateTicketTypeActive(input: UpdateTicketTypeActiveValues) {
+      const values = updateTicketTypeActiveSchema.parse(input);
+      const { data: existing, error: existingError } =
+        await repository.getTicketTypeById({
+          organisationId: values.organisationId,
+          eventId: values.eventId,
+          ticketTypeId: values.ticketTypeId,
+        });
+
+      if (existingError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type could not be checked.",
+          500,
+          existingError,
+        );
+      }
+
+      if (!existing) {
+        throw new AppError("NOT_FOUND", "Ticket type was not found.", 404);
+      }
+
+      if (existing.active === values.active) {
+        return existing;
+      }
+
+      const { data, error } = await repository.updateTicketType({
+        organisationId: values.organisationId,
+        eventId: values.eventId,
+        ticketTypeId: values.ticketTypeId,
+        values: { active: values.active },
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type status could not be updated.",
+          500,
+          error,
+        );
+      }
+
+      await createEventsAuditLog({
+        repository,
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: values.active
+          ? "event_ticket_type_activated"
+          : "event_ticket_type_deactivated",
+        entityType: "event_ticket_type",
+        entityId: data.id,
+        oldValues: safeTicketTypeSnapshot(existing),
+        newValues: safeTicketTypeSnapshot(data),
+      });
+
+      return data;
+    },
+
+    async issueTickets(input: IssueTicketsValues) {
+      const values = input;
+      const event = await this.getEventForAdmin({
+        organisationId: values.organisationId,
+        eventId: values.eventId,
+      });
+
+      if (event.status === "cancelled" || event.status === "completed") {
+        throw new AppError(
+          "CONFLICT",
+          "Tickets cannot be issued for cancelled or completed events.",
+          409,
+        );
+      }
+
+      const { data: ticketType, error: ticketTypeError } =
+        await repository.getTicketTypeById({
+          organisationId: values.organisationId,
+          eventId: values.eventId,
+          ticketTypeId: values.ticketTypeId,
+        });
+
+      if (ticketTypeError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket type could not be checked.",
+          500,
+          ticketTypeError,
+        );
+      }
+
+      if (!ticketType) {
+        throw new AppError("NOT_FOUND", "Ticket type was not found.", 404);
+      }
+
+      if (!ticketType.active) {
+        throw new AppError(
+          "CONFLICT",
+          "Inactive ticket types cannot issue tickets.",
+          409,
+        );
+      }
+
+      const now = new Date();
+      if (ticketType.sales_start_at && now < new Date(ticketType.sales_start_at)) {
+        throw new AppError("CONFLICT", "Ticket sales have not opened yet.", 409);
+      }
+
+      if (ticketType.sales_end_at && now > new Date(ticketType.sales_end_at)) {
+        throw new AppError("CONFLICT", "Ticket sales have closed.", 409);
+      }
+
+      const { count, error: countError } =
+        await repository.countIssuedTicketsForType({
+          organisationId: values.organisationId,
+          ticketTypeId: values.ticketTypeId,
+        });
+
+      if (countError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket availability could not be checked.",
+          500,
+          countError,
+        );
+      }
+
+      const issuedCount = count ?? 0;
+      if (
+        ticketType.quantity_available !== null &&
+        issuedCount + values.quantity > ticketType.quantity_available
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "Not enough tickets are available for this ticket type.",
+          409,
+        );
+      }
+
+      let purchaserUserId: string | null = null;
+      const userEmail = values.linkedUserEmail ?? values.holderEmail;
+
+      if (userEmail) {
+        const { data: user, error: userError } = await repository.findUserByEmail({
+          organisationId: values.organisationId,
+          email: userEmail,
+        });
+
+        if (userError) {
+          throw new AppError(
+            "INTERNAL_ERROR",
+            "Linked user could not be checked.",
+            500,
+            userError,
+          );
+        }
+
+        purchaserUserId = user?.id ?? null;
+      }
+
+      const ticketsToCreate = Array.from({ length: values.quantity }, () => ({
+        organisation_id: values.organisationId,
+        event_id: values.eventId,
+        ticket_type_id: values.ticketTypeId,
+        purchaser_user_id: purchaserUserId,
+        holder_name: values.holderName,
+        holder_email: values.holderEmail,
+        ticket_number: generateTicketNumber(),
+        qr_token: generateQrToken(),
+        status: "issued" as const,
+        created_by: values.reviewedByUserId,
+        internal_note: values.internalNote,
+      }));
+
+      const { data, error } = await repository.createTickets(ticketsToCreate);
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Tickets could not be issued.",
+          500,
+          error,
+        );
+      }
+
+      const tickets = data ?? [];
+      await createEventsAuditLog({
+        repository,
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "event_ticket_issued",
+        entityType: "event_ticket",
+        entityId: tickets[0]?.id ?? values.eventId,
+        newValues: {
+          event_id: values.eventId,
+          ticket_type_id: values.ticketTypeId,
+          quantity: tickets.length,
+          ticket_ids: tickets.map((ticket) => ticket.id),
+          ticket_numbers: tickets.map((ticket) => ticket.ticket_number),
+        },
+      });
+
+      return tickets.map(safeTicketSnapshot);
+    },
+
+    async cancelTicket(input: CancelTicketValues) {
+      const values = cancelTicketSchema.parse(input);
+      const { data: existing, error: existingError } =
+        await repository.getTicketById({
+          organisationId: values.organisationId,
+          eventId: values.eventId,
+          ticketId: values.ticketId,
+        });
+
+      if (existingError) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket could not be checked.",
+          500,
+          existingError,
+        );
+      }
+
+      if (!existing) {
+        throw new AppError("NOT_FOUND", "Ticket was not found.", 404);
+      }
+
+      if (existing.status === "cancelled") {
+        return existing;
+      }
+
+      if (existing.status !== "issued") {
+        throw new AppError(
+          "CONFLICT",
+          "Only issued tickets can be cancelled.",
+          409,
+        );
+      }
+
+      const { data, error } = await repository.updateTicket({
+        organisationId: values.organisationId,
+        eventId: values.eventId,
+        ticketId: values.ticketId,
+        values: {
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+        },
+      });
+
+      if (error) {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          "Ticket could not be cancelled.",
+          500,
+          error,
+        );
+      }
+
+      await createEventsAuditLog({
+        repository,
+        organisationId: values.organisationId,
+        userId: values.reviewedByUserId,
+        action: "event_ticket_cancelled",
+        entityType: "event_ticket",
+        entityId: data.id,
+        oldValues: safeTicketSnapshot(existing),
+        newValues: safeTicketSnapshot(data),
+      });
+
+      return safeTicketSnapshot(data);
     },
 
     async saveEvent(input: EventEditorValues) {
