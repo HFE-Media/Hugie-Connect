@@ -259,6 +259,158 @@ export type Database = {
         >;
         Relationships: [];
       };
+      event_categories: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          status: "active" | "inactive" | "archived";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          status?: "active" | "inactive" | "archived";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["event_categories"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      events: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          category_id: string | null;
+          title: string;
+          slug: string;
+          summary: string | null;
+          description: string | null;
+          venue: string | null;
+          starts_at: string;
+          ends_at: string;
+          capacity: number | null;
+          visibility: "public" | "members_only";
+          status: "draft" | "published" | "cancelled" | "completed";
+          featured_image_url: string | null;
+          published_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          category_id?: string | null;
+          title: string;
+          slug: string;
+          summary?: string | null;
+          description?: string | null;
+          venue?: string | null;
+          starts_at: string;
+          ends_at: string;
+          capacity?: number | null;
+          visibility?: "public" | "members_only";
+          status?: "draft" | "published" | "cancelled" | "completed";
+          featured_image_url?: string | null;
+          published_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
+        Relationships: [];
+      };
+      event_ticket_types: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          event_id: string;
+          name: string;
+          description: string | null;
+          price: number;
+          currency: string;
+          quantity_available: number | null;
+          sales_start_at: string | null;
+          sales_end_at: string | null;
+          active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          event_id: string;
+          name: string;
+          description?: string | null;
+          price?: number;
+          currency?: string;
+          quantity_available?: number | null;
+          sales_start_at?: string | null;
+          sales_end_at?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["event_ticket_types"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      event_tickets: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          event_id: string;
+          ticket_type_id: string;
+          purchaser_user_id: string | null;
+          holder_name: string;
+          holder_email: string | null;
+          ticket_number: string;
+          qr_token: string;
+          status: "issued" | "cancelled" | "used" | "refunded";
+          issued_at: string;
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          checked_in_by: string | null;
+          created_by: string | null;
+          internal_note: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          event_id: string;
+          ticket_type_id: string;
+          purchaser_user_id?: string | null;
+          holder_name: string;
+          holder_email?: string | null;
+          ticket_number: string;
+          qr_token: string;
+          status?: "issued" | "cancelled" | "used" | "refunded";
+          issued_at?: string;
+          cancelled_at?: string | null;
+          checked_in_at?: string | null;
+          checked_in_by?: string | null;
+          created_by?: string | null;
+          internal_note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_tickets"]["Insert"]>;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;
@@ -300,11 +452,23 @@ export type Database = {
         Args: Record<string, never>;
         Returns: string | null;
       };
+      current_app_user_email: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
       current_user_has_any_role: {
         Args: { role_names: string[] };
         Returns: boolean;
       };
       current_user_can_manage_memberships: {
+        Args: { target_organisation_id: string };
+        Returns: boolean;
+      };
+      current_user_can_manage_events: {
+        Args: { target_organisation_id: string };
+        Returns: boolean;
+      };
+      current_user_has_active_membership: {
         Args: { target_organisation_id: string };
         Returns: boolean;
       };

@@ -20,6 +20,8 @@ export default async function ProtectedLayout({
   const profile = await requireProfile();
   const showAdmin = hasPermission(profile.roles, "admin:shell:view");
   const showScanner = hasPermission(profile.roles, "scanner:shell:view");
+  const showEventAdmin = hasPermission(profile.roles, "events:manage");
+  const showTickets = hasPermission(profile.roles, "events:tickets:view");
   const membershipService = createMembershipService(
     await createSupabaseServerClient(),
   );
@@ -53,12 +55,26 @@ export default async function ProtectedLayout({
             >
               Portal
             </Link>
+            <Link
+              href={showEventAdmin ? "/admin/events" : "/events"}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              Events
+            </Link>
             {hasMembership ? (
               <Link
                 href="/portal/membership"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 My Membership
+              </Link>
+            ) : null}
+            {showTickets ? (
+              <Link
+                href="/portal/tickets"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Tickets
               </Link>
             ) : null}
             {showAdmin ? (
