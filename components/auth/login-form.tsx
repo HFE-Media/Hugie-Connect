@@ -5,13 +5,13 @@ import { useActionState } from "react";
 
 import { loginAction } from "@/features/auth/actions";
 import { getInitialAuthActionState } from "@/features/auth/state";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormMessage } from "@/components/auth/form-message";
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     loginAction,
     getInitialAuthActionState(),
   );
@@ -50,9 +50,7 @@ export function LoginForm() {
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Signing in..." : "Sign in"}
-      </Button>
+      <SubmitButton size="lg" className="w-full" pendingLabel="Signing in...">Sign in</SubmitButton>
 
       <p className="text-center text-sm text-muted-foreground">
         Your account is created when an authorised application is approved.

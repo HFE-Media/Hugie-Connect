@@ -76,6 +76,7 @@ export function MembershipVerificationScanner() {
     setLastPayload(null);
     setResult(null);
     setScannerError(null);
+    setManualValue("");
   }
 
   return (
@@ -97,7 +98,7 @@ export function MembershipVerificationScanner() {
           <Scanner
             onScan={handleScan}
             onError={handleError}
-            paused={isPending}
+            paused={isPending || Boolean(result)}
             allowMultiple={false}
             formats={["qr_code"]}
             constraints={{ facingMode: "environment" }}
@@ -109,7 +110,7 @@ export function MembershipVerificationScanner() {
         </div>
 
         {scannerError ? (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700" role="alert">
             {scannerError}
           </p>
         ) : null}
@@ -122,7 +123,7 @@ export function MembershipVerificationScanner() {
             disabled={isPending}
           >
             <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-            Reset
+            Scan another
           </Button>
           {isPending ? (
             <div className="inline-flex items-center text-sm text-muted-foreground">
@@ -158,8 +159,9 @@ export function MembershipVerificationScanner() {
                 autoComplete="off"
               />
             </div>
-            <Button type="submit" disabled={isPending || !manualValue.trim()}>
-              Verify membership
+            <Button type="submit" disabled={isPending || !manualValue.trim()} aria-disabled={isPending || !manualValue.trim()}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {isPending ? "Verifying membership..." : "Verify membership"}
             </Button>
           </form>
         </section>

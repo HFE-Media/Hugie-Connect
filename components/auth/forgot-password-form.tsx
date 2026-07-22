@@ -6,12 +6,12 @@ import { useActionState } from "react";
 import { forgotPasswordAction } from "@/features/auth/actions";
 import { getInitialAuthActionState } from "@/features/auth/state";
 import { FormMessage } from "@/components/auth/form-message";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function ForgotPasswordForm() {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     forgotPasswordAction,
     getInitialAuthActionState(),
   );
@@ -31,9 +31,7 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Sending reset link..." : "Send reset link"}
-      </Button>
+      <SubmitButton size="lg" className="w-full" pendingLabel="Sending reset link...">Send reset link</SubmitButton>
 
       <p className="text-center text-sm">
         <Link href="/login" className="inline-flex min-h-11 items-center font-medium text-secondary hover:underline">

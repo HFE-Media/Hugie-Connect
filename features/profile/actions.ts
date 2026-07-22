@@ -21,7 +21,7 @@ function readString(formData: FormData, key: string) {
 }
 
 function firstValidationMessage(error: { issues: { message: string }[] }) {
-  return error.issues[0]?.message ?? "Check the form and try again.";
+  return error.issues[0]?.message ?? "Review the form and try again.";
 }
 
 async function getAuthenticatedUser() {
@@ -153,7 +153,7 @@ export async function updateOwnProfileAction(
 
   return {
     status: "success",
-    message: "Your profile has been updated.",
+    message: "Your profile has been updated successfully.",
   };
 }
 
@@ -227,6 +227,6 @@ export async function changeOwnPasswordAction(
 
   return {
     status: "success",
-    message: "Your password has been changed.",
+    message: "Your password has been changed successfully.",
   };
 }

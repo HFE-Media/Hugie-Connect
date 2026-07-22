@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, CalendarX2, MapPin, Search, X } from "lucide-
 
 import { EventVisibilityBadge } from "@/components/events/event-status-badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import type { PublicEventsPage } from "@/types/events";
 
@@ -77,9 +78,7 @@ export function PublicEventsList({
               </option>
             ))}
           </select>
-          <Button type="submit">
-            Filter
-          </Button>
+          <SubmitButton pendingLabel="Applying filters...">Apply filters</SubmitButton>
         </form>
         {search || categoryId ? (
           <Button asChild variant="ghost" size="sm" className="mt-3">
@@ -138,7 +137,7 @@ export function PublicEventsList({
                   {event.title}
                 </h2>
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                  {event.summary ?? event.description ?? "Event details coming soon."}
+                  {event.summary ?? event.description ?? "More event details will be shared soon."}
                 </p>
                 <div className="mt-4 space-y-2 text-sm text-muted-foreground">
                   <p className="flex items-center gap-2">

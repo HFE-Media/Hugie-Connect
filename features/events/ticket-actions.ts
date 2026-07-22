@@ -69,7 +69,7 @@ export async function saveTicketTypeAdminAction(formData: FormData) {
     redirect(
       eventPath(eventId, {
         error:
-          result.error.issues[0]?.message ?? "Check the ticket type details.",
+          result.error.issues[0]?.message ?? "Review the ticket type details.",
       }),
     );
   }
@@ -85,7 +85,7 @@ export async function saveTicketTypeAdminAction(formData: FormData) {
     redirect(eventPath(eventId, { error: getSafeErrorMessage(error) }));
   }
 
-  redirect(eventPath(eventId, { success: "Ticket type saved." }));
+  redirect(eventPath(eventId, { success: result.data.ticketTypeId ? "Ticket type updated successfully." : "Ticket type created successfully." }));
 }
 
 export async function updateTicketTypeActiveAdminAction(formData: FormData) {
@@ -102,7 +102,7 @@ export async function updateTicketTypeActiveAdminAction(formData: FormData) {
   });
 
   if (!result.success) {
-    redirect(eventPath(eventId, { error: "Check the ticket type action." }));
+    redirect(eventPath(eventId, { error: "Unable to change the ticket type status." }));
   }
 
   try {
@@ -118,7 +118,7 @@ export async function updateTicketTypeActiveAdminAction(formData: FormData) {
 
   redirect(
     eventPath(eventId, {
-      success: active ? "Ticket type activated." : "Ticket type deactivated.",
+      success: active ? "Ticket type activated successfully." : "Ticket type deactivated successfully.",
     }),
   );
 }
@@ -141,7 +141,7 @@ export async function issueTicketsAdminAction(formData: FormData) {
   if (!result.success) {
     redirect(
       eventPath(eventId, {
-        error: result.error.issues[0]?.message ?? "Check the ticket details.",
+        error: result.error.issues[0]?.message ?? "Review the ticket details.",
       }),
     );
   }
@@ -157,7 +157,7 @@ export async function issueTicketsAdminAction(formData: FormData) {
     redirect(eventPath(eventId, { error: getSafeErrorMessage(error) }));
   }
 
-  redirect(eventPath(eventId, { success: "Tickets issued." }));
+  redirect(eventPath(eventId, { success: `${result.data.quantity} ${result.data.quantity === 1 ? "ticket" : "tickets"} issued successfully.` }));
 }
 
 export async function cancelTicketAdminAction(formData: FormData) {
@@ -171,7 +171,7 @@ export async function cancelTicketAdminAction(formData: FormData) {
   });
 
   if (!result.success) {
-    redirect(eventPath(eventId, { error: "Check the ticket cancellation." }));
+    redirect(eventPath(eventId, { error: "Unable to cancel this ticket." }));
   }
 
   try {
@@ -185,5 +185,5 @@ export async function cancelTicketAdminAction(formData: FormData) {
     redirect(eventPath(eventId, { error: getSafeErrorMessage(error) }));
   }
 
-  redirect(eventPath(eventId, { success: "Ticket cancelled." }));
+  redirect(eventPath(eventId, { success: "Ticket cancelled successfully." }));
 }

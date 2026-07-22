@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState, useTransition, type FormEvent } from "react";
-import { Camera, Keyboard, Loader2, RotateCcw } from "lucide-react";
+import { Camera, CalendarX2, Keyboard, Loader2, RotateCcw } from "lucide-react";
 import type { IDetectedBarcode, IScannerError } from "@yudiel/react-qr-scanner";
 
 import { EventTicketScanResultPanel } from "@/components/events/event-ticket-scan-result";
@@ -100,12 +100,16 @@ export function EventTicketScanner({ events }: EventTicketScannerProps) {
     setLastPayload(null);
     setResult(null);
     setScannerError(null);
+    setManualValue("");
   }
 
   if (events.length === 0) {
     return (
       <section className="rounded-xl border bg-card p-6 text-center shadow-soft">
-        <h2 className="text-lg font-semibold">No scannable events</h2>
+        <div className="mx-auto grid h-11 w-11 place-items-center rounded-md bg-muted text-primary">
+          <CalendarX2 className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold">No scannable events</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           Published events that have not ended will appear here when they are
           ready for gate scanning.
@@ -152,7 +156,7 @@ export function EventTicketScanner({ events }: EventTicketScannerProps) {
           <Scanner
             onScan={handleScan}
             onError={handleError}
-            paused={isPending}
+            paused={isPending || Boolean(result)}
             allowMultiple={false}
             formats={["qr_code"]}
             constraints={{ facingMode: "environment" }}
@@ -164,7 +168,7 @@ export function EventTicketScanner({ events }: EventTicketScannerProps) {
         </div>
 
         {scannerError ? (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700" role="alert">
             {scannerError}
           </p>
         ) : null}
@@ -177,7 +181,7 @@ export function EventTicketScanner({ events }: EventTicketScannerProps) {
             disabled={isPending}
           >
             <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-            Reset
+            Scan another
           </Button>
           {isPending ? (
             <div className="inline-flex items-center text-sm text-muted-foreground">
@@ -213,8 +217,9 @@ export function EventTicketScanner({ events }: EventTicketScannerProps) {
                 autoComplete="off"
               />
             </div>
-            <Button type="submit" disabled={isPending || !manualValue.trim()}>
-              Scan ticket
+            <Button type="submit" disabled={isPending || !manualValue.trim()} aria-disabled={isPending || !manualValue.trim()}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {isPending ? "Checking ticket..." : "Scan ticket"}
             </Button>
           </form>
         </section>

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, ClipboardList, Search } from "lucide-react";
 
 import { AdminApplicationStatusBadge } from "@/components/membership/admin-application-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type {
   MembershipApplicationStatus,
   MembershipApplicationsAdminPage,
@@ -104,16 +105,17 @@ export function AdminApplicationsTable({
                 className="pl-9"
               />
             </div>
-            <Button type="submit" variant="outline">
-              Search
-            </Button>
+            <SubmitButton pendingLabel="Searching..." variant="outline">Search</SubmitButton>
           </form>
         </div>
       </div>
 
       {data.applications.length === 0 ? (
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
-          <p className="text-base font-semibold">No applications found</p>
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-md bg-muted text-primary">
+            <ClipboardList className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-base font-semibold">No applications found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             New membership applications will appear here. Adjust the filters if
             you are looking for an earlier submission.

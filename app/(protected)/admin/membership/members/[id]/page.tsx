@@ -5,6 +5,7 @@ import { UserRound } from "lucide-react";
 import { AdminMemberActions } from "@/components/membership/admin-member-actions";
 import { AdminMemberDetail } from "@/components/membership/admin-member-detail";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { toAppError } from "@/lib/errors";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
@@ -65,17 +66,8 @@ export default async function AdminMembershipMemberDetailPage({
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Members", href: "/admin/membership/members" }, { label: "Member" }]}
       />
 
-      {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {success}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="success" message={success} />
+      <FeedbackAlert tone="error" message={error ? `${error} Review the member action and try again.` : null} />
 
       <AdminMemberActions member={member} />
       <AdminMemberDetail member={member} canManageCards={canManageCards} />

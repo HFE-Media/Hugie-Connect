@@ -6,12 +6,12 @@ import { useActionState } from "react";
 import { resetPasswordAction } from "@/features/auth/actions";
 import { getInitialAuthActionState } from "@/features/auth/state";
 import { FormMessage } from "@/components/auth/form-message";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function ResetPasswordForm() {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     resetPasswordAction,
     getInitialAuthActionState(),
   );
@@ -47,9 +47,7 @@ export function ResetPasswordForm() {
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Updating password..." : "Update password"}
-      </Button>
+      <SubmitButton size="lg" className="w-full" pendingLabel="Updating password...">Update password</SubmitButton>
 
       {state.status === "success" ? (
         <p className="text-center text-sm">

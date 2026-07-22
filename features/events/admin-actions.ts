@@ -62,7 +62,7 @@ export async function saveEventAdminAction(formData: FormData) {
   });
 
   if (!result.success) {
-    const message = result.error.issues[0]?.message ?? "Check the event details.";
+    const message = result.error.issues[0]?.message ?? "Review the event details.";
     const eventId = readString(formData, "eventId");
     redirect(
       eventId
@@ -96,7 +96,9 @@ export async function saveEventAdminAction(formData: FormData) {
 
   redirect(
     eventPath(savedEventId, {
-      success: result.data.eventId ? "Event updated." : "Event created.",
+      success: result.data.eventId
+        ? "Event details updated successfully."
+        : "Event draft created successfully.",
     }),
   );
 }
@@ -109,7 +111,7 @@ export async function updateEventStatusAdminAction(formData: FormData) {
 
   if (!result.success) {
     const eventId = readString(formData, "eventId");
-    redirect(eventPath(eventId, { error: "Check the event status action." }));
+    redirect(eventPath(eventId, { error: "Unable to update the event status." }));
   }
 
   const { service, appUser } = await getEventAdminContext();
@@ -137,8 +139,8 @@ export async function updateEventStatusAdminAction(formData: FormData) {
     eventPath(result.data.eventId, {
       success:
         result.data.status === "published"
-          ? "Event published."
-          : "Event cancelled.",
+          ? "Event published successfully."
+          : "Event cancelled successfully.",
     }),
   );
 }

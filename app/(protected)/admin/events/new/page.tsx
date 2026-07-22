@@ -4,6 +4,7 @@ import { CalendarPlus } from "lucide-react";
 import { AdminEventForm } from "@/components/events/admin-event-form";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { requirePermission } from "@/services/auth/server";
 import { createEventsAdminService } from "@/services/events/service";
 
@@ -39,11 +40,7 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Events", href: "/admin/events" }, { label: "Create event" }]}
       />
       <section className="rounded-2xl border bg-card p-5 shadow-soft sm:p-6">
-        {error ? (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error}
-          </div>
-        ) : null}
+        <FeedbackAlert tone="error" message={error ? `${error} Review the highlighted information and try again.` : null} className="mb-5" />
 
         <AdminEventForm categories={categories} />
       </section>

@@ -7,12 +7,12 @@ import {
 } from "@/features/profile/actions";
 import { getInitialProfileActionState } from "@/features/profile/state";
 import { FormMessage } from "@/components/auth/form-message";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function ChangePasswordForm() {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     changeOwnPasswordAction,
     getInitialProfileActionState(),
   );
@@ -45,9 +45,7 @@ export function ChangePasswordForm() {
         />
       </div>
 
-      <Button type="submit" variant="secondary" disabled={pending}>
-        {pending ? "Changing password..." : "Change password"}
-      </Button>
+      <SubmitButton variant="secondary" pendingLabel="Changing password...">Change password</SubmitButton>
     </form>
   );
 }

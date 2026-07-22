@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requireProfile } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
 import type { MembershipApplicationActionState } from "@/features/membership/state";
+import { getSafeErrorMessage } from "@/lib/errors";
 
 const publicMembershipApplicationFormSchema = z.object({
   organisationId: z.string().uuid(),
@@ -50,7 +51,7 @@ export async function submitMembershipApplicationAction(
   if (!result.success) {
     return {
       status: "error",
-      message: "Check the highlighted fields and try again.",
+      message: "Review the highlighted fields and try again.",
       fieldErrors: result.error.flatten().fieldErrors,
     };
   }
@@ -75,10 +76,7 @@ export async function submitMembershipApplicationAction(
   } catch (error) {
     return {
       status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Your application could not be submitted. Please try again.",
+      message: `${getSafeErrorMessage(error)} Please review your details and try again.`,
     };
   }
 

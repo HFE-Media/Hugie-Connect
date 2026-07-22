@@ -5,6 +5,7 @@ import { ClipboardList } from "lucide-react";
 import { AdminApplicationDetail } from "@/components/membership/admin-application-detail";
 import { AdminApplicationReviewForms } from "@/components/membership/admin-application-review-forms";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { toAppError } from "@/lib/errors";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
@@ -63,17 +64,8 @@ export default async function AdminMembershipApplicationDetailPage({
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Applications", href: "/admin/membership/applications" }, { label: "Application" }]}
       />
 
-      {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {success}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="success" message={success} />
+      <FeedbackAlert tone="error" message={error ? `${error} Review the decision details and try again.` : null} />
 
       <AdminApplicationDetail application={application} />
       <AdminApplicationReviewForms application={application} />

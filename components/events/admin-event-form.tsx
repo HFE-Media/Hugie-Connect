@@ -1,5 +1,5 @@
 import { saveEventAdminAction } from "@/features/events/admin-actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { EventCategory, EventWithCategory } from "@/types/events";
@@ -44,7 +44,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="categoryId">Category</Label>
+          <Label htmlFor="categoryId">Category <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <select
             id="categoryId"
             name="categoryId"
@@ -96,7 +96,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="venue">Venue</Label>
+          <Label htmlFor="venue">Venue <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Input
             id="venue"
             name="venue"
@@ -106,7 +106,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="capacity">Capacity</Label>
+          <Label htmlFor="capacity">Capacity <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Input
             id="capacity"
             name="capacity"
@@ -118,7 +118,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="featuredImageUrl">Featured image URL</Label>
+          <Label htmlFor="featuredImageUrl">Featured image URL <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Input
             id="featuredImageUrl"
             name="featuredImageUrl"
@@ -129,7 +129,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="summary">Summary</Label>
+          <Label htmlFor="summary">Summary <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Input
             id="summary"
             name="summary"
@@ -139,7 +139,7 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <textarea
             id="description"
             name="description"
@@ -151,7 +151,9 @@ export function AdminEventForm({ categories, event }: AdminEventFormProps) {
         </div>
       </div>
 
-      <Button type="submit">{event ? "Save event" : "Create draft"}</Button>
+      <SubmitButton pendingLabel={event ? "Saving event..." : "Creating draft..."}>
+        {event ? "Save event" : "Create draft"}
+      </SubmitButton>
     </form>
   );
 }

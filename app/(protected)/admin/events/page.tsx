@@ -4,6 +4,7 @@ import { CalendarDays, Plus } from "lucide-react";
 import { AdminEventsTable } from "@/components/events/admin-events-table";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { requirePermission } from "@/services/auth/server";
 import { createEventsAdminService } from "@/services/events/service";
 import type { EventStatus } from "@/types/events";
@@ -78,17 +79,8 @@ export default async function AdminEventsPage({
         actions={<Button asChild><Link href="/admin/events/new"><Plus className="mr-2 h-4 w-4" aria-hidden="true" />Create event</Link></Button>}
       />
 
-      {success ? (
-        <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {success}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="success" message={success} className="mb-5" />
+      <FeedbackAlert tone="error" message={error ? `${error} Please review the event details and try again.` : null} className="mb-5" />
 
       <AdminEventsTable
         data={data}

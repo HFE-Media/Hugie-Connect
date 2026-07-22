@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ScanLine, XCircle } from "lucide-react";
 
 import type {
   MembershipVerificationResult,
@@ -57,7 +57,10 @@ export function MembershipVerificationResultPanel({
   if (!result) {
     return (
       <section className="rounded-xl border bg-card p-5 shadow-soft">
-        <p className="text-sm font-medium">No membership checked yet</p>
+        <div className="grid h-10 w-10 place-items-center rounded-md bg-muted text-primary">
+          <ScanLine className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <p className="mt-4 text-sm font-medium">Ready to verify a membership</p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Scan a membership QR or enter a membership QR value to see the
           verification result.
@@ -78,7 +81,11 @@ export function MembershipVerificationResultPanel({
   ].filter((detail): detail is [string, string] => Boolean(detail[1]));
 
   return (
-    <section className={cn("rounded-xl border p-5 shadow-soft", tone.panel)}>
+    <section
+      className={cn("rounded-xl border p-5 shadow-soft", tone.panel)}
+      role={result.tone === "invalid" ? "alert" : "status"}
+      aria-live={result.tone === "invalid" ? "assertive" : "polite"}
+    >
       <div className="flex items-start gap-3">
         <div
           className={cn(

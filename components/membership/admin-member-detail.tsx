@@ -9,7 +9,7 @@ import {
   AdminMembershipPeriodStatusBadge,
   AdminMemberStatusBadge,
 } from "@/components/membership/admin-member-status-badge";
-import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -290,14 +290,16 @@ export function AdminMemberDetail({
                   maxLength={1000}
                 />
               </div>
-              <Button
-                type="submit"
-                variant="destructive"
+              <ConfirmSubmitButton
                 disabled={!canRevokeCard}
                 className="mt-4"
+                title="Revoke this membership card?"
+                description="The current QR code will stop verifying immediately. The member and membership period will remain unchanged."
+                confirmLabel="Revoke card"
+                pendingLabel="Revoking card..."
               >
                 Revoke card
-              </Button>
+              </ConfirmSubmitButton>
             </form>
 
             <form
@@ -323,13 +325,17 @@ export function AdminMemberDetail({
                   maxLength={1000}
                 />
               </div>
-              <Button
-                type="submit"
+              <ConfirmSubmitButton
                 disabled={!canReissueCard}
                 className="mt-4"
+                variant="outline"
+                title="Issue a replacement card?"
+                description="A new secure QR token will be issued. The previous card will remain revoked and cannot be restored."
+                confirmLabel="Issue replacement"
+                pendingLabel="Issuing replacement..."
               >
                 Issue replacement
-              </Button>
+              </ConfirmSubmitButton>
             </form>
           </div>
         ) : null}

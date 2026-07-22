@@ -2,7 +2,7 @@ import { RefreshCw } from "lucide-react";
 
 import { renewMemberAdminAction } from "@/features/membership/admin-actions";
 import type { MemberRenewalDetail } from "@/types/membership";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -103,7 +103,7 @@ export function AdminRenewalForm({ member }: AdminRenewalFormProps) {
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="notes">Internal notes</Label>
+          <Label htmlFor="notes">Internal notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Input
             id="notes"
             name="notes"
@@ -111,9 +111,7 @@ export function AdminRenewalForm({ member }: AdminRenewalFormProps) {
           />
         </div>
         <div className="sm:col-span-2">
-          <Button type="submit" disabled={!canRenew}>
-            Renew membership
-          </Button>
+          <SubmitButton disabled={!canRenew} pendingLabel="Renewing membership...">Renew membership</SubmitButton>
         </div>
       </form>
 

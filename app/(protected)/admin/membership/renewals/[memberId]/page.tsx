@@ -6,6 +6,7 @@ import { AdminMemberDetail } from "@/components/membership/admin-member-detail";
 import { AdminRenewalForm } from "@/components/membership/admin-renewal-form";
 import { AdminRenewalStatusBadge } from "@/components/membership/admin-renewal-status-badge";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { toAppError } from "@/lib/errors";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
@@ -64,17 +65,8 @@ export default async function AdminMembershipRenewalDetailPage({
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Renewals", href: "/admin/membership/renewals" }, { label: "Renewal" }]}
       />
 
-      {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {success}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="success" message={success} />
+      <FeedbackAlert tone="error" message={error ? `${error} Review the renewal dates and try again.` : null} />
 
       <section className="rounded-2xl border bg-card p-5 shadow-soft">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

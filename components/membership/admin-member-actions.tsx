@@ -2,7 +2,8 @@ import { PauseCircle, PlayCircle } from "lucide-react";
 
 import { updateMemberStatusAdminAction } from "@/features/membership/admin-actions";
 import type { MemberAdminDetail } from "@/types/membership";
-import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type AdminMemberActionsProps = {
   member: MemberAdminDetail;
@@ -25,29 +26,32 @@ export function AdminMemberActions({ member }: AdminMemberActionsProps) {
         <form action={updateMemberStatusAdminAction}>
           <input type="hidden" name="memberId" value={member.id} />
           <input type="hidden" name="status" value="suspended" />
-          <Button
-            type="submit"
+          <ConfirmSubmitButton
             variant="destructive"
             disabled={!canSuspend}
             className="w-full sm:w-auto"
+            title="Suspend this member?"
+            description="The member will lose active membership access and their membership QR will no longer verify. Their history and records will be preserved."
+            confirmLabel="Suspend member"
+            pendingLabel="Suspending member..."
           >
             <PauseCircle className="mr-2 h-4 w-4" aria-hidden="true" />
             Suspend member
-          </Button>
+          </ConfirmSubmitButton>
         </form>
 
         <form action={updateMemberStatusAdminAction}>
           <input type="hidden" name="memberId" value={member.id} />
           <input type="hidden" name="status" value="active" />
-          <Button
-            type="submit"
+          <SubmitButton
             variant="outline"
             disabled={!canReactivate}
             className="w-full sm:w-auto"
+            pendingLabel="Reactivating member..."
           >
             <PlayCircle className="mr-2 h-4 w-4" aria-hidden="true" />
             Reactivate member
-          </Button>
+          </SubmitButton>
         </form>
       </div>
     </section>

@@ -6,7 +6,7 @@ import type {
   MembershipPeriodStatus,
 } from "@/types/membership";
 import { DigitalMembershipCard } from "@/components/membership/digital-membership-card";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/utils";
 
 type MemberMembershipSummaryCardProps = {
@@ -250,7 +250,7 @@ export function EmptyMembershipState({
       </p>
       {linkAction ? (
         <form action={linkAction} className="mt-5">
-          <Button type="submit">Link my membership</Button>
+          <SubmitButton pendingLabel="Linking membership...">Link my membership</SubmitButton>
         </form>
       ) : null}
     </section>

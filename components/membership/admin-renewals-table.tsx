@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, RefreshCw, Search } from "lucide-react";
 
 import { AdminMemberStatusBadge } from "@/components/membership/admin-member-status-badge";
 import { AdminRenewalStatusBadge } from "@/components/membership/admin-renewal-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type {
   MemberRenewalsAdminPage,
   MembershipRenewalFilter,
@@ -108,16 +109,17 @@ export function AdminRenewalsTable({
                 className="pl-9"
               />
             </div>
-            <Button type="submit" variant="outline">
-              Search
-            </Button>
+            <SubmitButton pendingLabel="Searching..." variant="outline">Search</SubmitButton>
           </form>
         </div>
       </div>
 
       {data.members.length === 0 ? (
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
-          <p className="text-base font-semibold">No renewals found</p>
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-md bg-muted text-primary">
+            <RefreshCw className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-base font-semibold">No renewals found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Memberships eligible for renewal will appear here. Adjust the
             filters to review another validity window.

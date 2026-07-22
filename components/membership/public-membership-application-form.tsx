@@ -5,9 +5,10 @@ import { useActionState } from "react";
 
 import { submitMembershipApplicationAction } from "@/features/membership/actions";
 import { getInitialMembershipApplicationState } from "@/features/membership/state";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import type { MembershipType } from "@/types/membership";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +44,7 @@ export function PublicMembershipApplicationForm({
   organisationId,
   membershipTypes,
 }: PublicMembershipApplicationFormProps) {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     submitMembershipApplicationAction,
     getInitialMembershipApplicationState(),
   );
@@ -52,14 +53,7 @@ export function PublicMembershipApplicationForm({
     <form action={formAction} className="space-y-8">
       <input type="hidden" name="organisationId" value={organisationId} />
 
-      {state.message ? (
-        <div
-          className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-          role="alert"
-        >
-          {state.message}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="error" message={state.message} />
 
       <section className="space-y-4" aria-labelledby="membership-step-title">
         <div>
@@ -140,8 +134,8 @@ export function PublicMembershipApplicationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mobile">Mobile number</Label>
-            <Input id="mobile" name="mobile" type="tel" autoComplete="tel" />
+            <Label htmlFor="mobile">Mobile number <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input id="mobile" name="mobile" type="tel" autoComplete="tel" aria-invalid={Boolean(state.fieldErrors?.mobile)} aria-describedby="mobile-error" />
             <FieldError id="mobile-error" errors={state.fieldErrors?.mobile} />
           </div>
         </div>
@@ -172,9 +166,7 @@ export function PublicMembershipApplicationForm({
         <FieldError id="terms-error" errors={state.fieldErrors?.termsAccepted} />
       </section>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Submitting application..." : "Submit application"}
-      </Button>
+      <SubmitButton size="lg" className="w-full" pendingLabel="Submitting application...">Submit application</SubmitButton>
     </form>
   );
 }

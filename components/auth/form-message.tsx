@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 
 type FormMessageProps = {
   status: "idle" | "success" | "error";
@@ -10,17 +10,5 @@ export function FormMessage({ status, message }: FormMessageProps) {
     return null;
   }
 
-  return (
-    <p
-      className={cn(
-        "rounded-lg border px-3 py-2 text-sm",
-        status === "success" &&
-          "border-green-200 bg-green-50 text-green-800",
-        status === "error" && "border-red-200 bg-red-50 text-red-800",
-      )}
-      role={status === "error" ? "alert" : "status"}
-    >
-      {message}
-    </p>
-  );
+  return <FeedbackAlert tone={status === "error" ? "error" : "success"} message={message} />;
 }

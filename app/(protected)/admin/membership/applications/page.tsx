@@ -4,6 +4,7 @@ import { ClipboardList } from "lucide-react";
 import { AdminApplicationsTable } from "@/components/membership/admin-applications-table";
 import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
 import type { MembershipApplicationStatus } from "@/types/membership";
@@ -71,17 +72,8 @@ export default async function AdminMembershipApplicationsPage({
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Applications" }]}
       />
 
-      {success ? (
-        <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {success}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      ) : null}
+      <FeedbackAlert tone="success" message={success} className="mb-5" />
+      <FeedbackAlert tone="error" message={error ? `${error} Please review the application and try again.` : null} className="mb-5" />
 
       <AdminApplicationsTable data={data} status={status} search={search} />
     </main>

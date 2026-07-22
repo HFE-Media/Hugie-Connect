@@ -12,9 +12,10 @@ import {
   saveTicketTypeAdminAction,
   updateTicketTypeActiveAdminAction,
 } from "@/features/events/ticket-actions";
-import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/ui/submit-button";
 import type {
   AdminEventTicket,
   EventTicketTypeWithAvailability,
@@ -107,7 +108,7 @@ export function AdminTicketManagement({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ticket-quantity">Quantity available</Label>
+            <Label htmlFor="ticket-quantity">Quantity available <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input
               id="ticket-quantity"
               name="quantityAvailable"
@@ -128,15 +129,15 @@ export function AdminTicketManagement({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ticket-sales-start">Sales start</Label>
+            <Label htmlFor="ticket-sales-start">Sales start <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="ticket-sales-start" name="salesStartAt" type="datetime-local" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ticket-sales-end">Sales end</Label>
+            <Label htmlFor="ticket-sales-end">Sales end <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="ticket-sales-end" name="salesEndAt" type="datetime-local" />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="ticket-description">Description</Label>
+            <Label htmlFor="ticket-description">Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input
               id="ticket-description"
               name="description"
@@ -145,14 +146,18 @@ export function AdminTicketManagement({
             />
           </div>
           <div className="md:col-span-2">
-            <Button type="submit">Add ticket type</Button>
+            <SubmitButton pendingLabel="Adding ticket type...">Add ticket type</SubmitButton>
           </div>
         </form>
 
         <div className="mt-5 space-y-3">
           {ticketTypes.length === 0 ? (
-            <div className="rounded-xl border bg-background p-4 text-sm text-muted-foreground">
-              No ticket types have been configured yet.
+            <div className="rounded-xl border bg-background p-6 text-center">
+              <div className="mx-auto grid h-10 w-10 place-items-center rounded-md bg-muted text-primary">
+                <Ticket className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">No ticket types configured</p>
+              <p className="mt-1 text-sm text-muted-foreground">Add the first ticket type using the form above.</p>
             </div>
           ) : (
             ticketTypes.map((ticketType) => (
@@ -188,14 +193,14 @@ export function AdminTicketManagement({
                       name="active"
                       value={ticketType.active ? "false" : "true"}
                     />
-                    <Button type="submit" variant="outline" size="sm">
+                    <SubmitButton pendingLabel={ticketType.active ? "Deactivating..." : "Activating..."} variant="outline" size="sm">
                       {ticketType.active ? (
                         <ToggleLeft className="mr-2 h-4 w-4" aria-hidden="true" />
                       ) : (
                         <ToggleRight className="mr-2 h-4 w-4" aria-hidden="true" />
                       )}
                       {ticketType.active ? "Deactivate" : "Activate"}
-                    </Button>
+                    </SubmitButton>
                   </form>
                 </div>
 
@@ -213,54 +218,40 @@ export function AdminTicketManagement({
                       name="ticketTypeId"
                       value={ticketType.id}
                     />
-                    <Input name="name" defaultValue={ticketType.name} required />
-                    <Input
-                      name="price"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      defaultValue={ticketType.price}
-                      required
-                    />
-                    <Input
-                      name="currency"
-                      defaultValue={ticketType.currency}
-                      maxLength={3}
-                      required
-                    />
-                    <Input
-                      name="quantityAvailable"
-                      type="number"
-                      min={1}
-                      step={1}
-                      defaultValue={ticketType.quantity_available ?? ""}
-                      placeholder="Unlimited"
-                    />
-                    <Input
-                      name="salesStartAt"
-                      type="datetime-local"
-                      defaultValue={toDateTimeLocal(ticketType.sales_start_at)}
-                    />
-                    <Input
-                      name="salesEndAt"
-                      type="datetime-local"
-                      defaultValue={toDateTimeLocal(ticketType.sales_end_at)}
-                    />
-                    <Input
-                      name="sortOrder"
-                      type="number"
-                      step={1}
-                      defaultValue={ticketType.sort_order}
-                    />
-                    <Input
-                      name="description"
-                      defaultValue={ticketType.description ?? ""}
-                      maxLength={500}
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-name-${ticketType.id}`}>Name</Label>
+                      <Input id={`edit-name-${ticketType.id}`} name="name" defaultValue={ticketType.name} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-price-${ticketType.id}`}>Price</Label>
+                      <Input id={`edit-price-${ticketType.id}`} name="price" type="number" min={0} step="0.01" defaultValue={ticketType.price} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-currency-${ticketType.id}`}>Currency</Label>
+                      <Input id={`edit-currency-${ticketType.id}`} name="currency" defaultValue={ticketType.currency} maxLength={3} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-quantity-${ticketType.id}`}>Quantity available <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input id={`edit-quantity-${ticketType.id}`} name="quantityAvailable" type="number" min={1} step={1} defaultValue={ticketType.quantity_available ?? ""} placeholder="Unlimited" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-sales-start-${ticketType.id}`}>Sales start <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input id={`edit-sales-start-${ticketType.id}`} name="salesStartAt" type="datetime-local" defaultValue={toDateTimeLocal(ticketType.sales_start_at)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-sales-end-${ticketType.id}`}>Sales end <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input id={`edit-sales-end-${ticketType.id}`} name="salesEndAt" type="datetime-local" defaultValue={toDateTimeLocal(ticketType.sales_end_at)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-sort-${ticketType.id}`}>Sort order</Label>
+                      <Input id={`edit-sort-${ticketType.id}`} name="sortOrder" type="number" step={1} defaultValue={ticketType.sort_order} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`edit-description-${ticketType.id}`}>Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input id={`edit-description-${ticketType.id}`} name="description" defaultValue={ticketType.description ?? ""} maxLength={500} />
+                    </div>
                     <div className="md:col-span-2">
-                      <Button type="submit" variant="outline">
-                        Save ticket type
-                      </Button>
+                      <SubmitButton pendingLabel="Saving ticket type..." variant="outline">Save ticket type</SubmitButton>
                     </div>
                   </form>
                 </details>
@@ -322,21 +313,19 @@ export function AdminTicketManagement({
             <Input id="holder-name" name="holderName" required maxLength={160} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="holder-email">Holder email</Label>
+            <Label htmlFor="holder-email">Holder email <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="holder-email" name="holderEmail" type="email" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="linked-user-email">Linked user email</Label>
+            <Label htmlFor="linked-user-email">Linked user email <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="linked-user-email" name="linkedUserEmail" type="email" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="internal-note">Internal note</Label>
+            <Label htmlFor="internal-note">Internal note <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="internal-note" name="internalNote" maxLength={500} />
           </div>
           <div className="md:col-span-2">
-            <Button type="submit" disabled={activeTicketTypes.length === 0}>
-              Issue tickets
-            </Button>
+            <SubmitButton pendingLabel="Issuing tickets..." disabled={activeTicketTypes.length === 0}>Issue tickets</SubmitButton>
           </div>
         </form>
       </div>
@@ -349,15 +338,19 @@ export function AdminTicketManagement({
           <div>
             <h2 className="text-lg font-semibold">Issued tickets</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              QR tokens are intentionally hidden from this admin view.
+              Secure QR values are never displayed in the administration view.
             </p>
           </div>
         </div>
 
         <div className="mt-5 overflow-hidden rounded-xl border">
           {tickets.length === 0 ? (
-            <div className="bg-background p-4 text-sm text-muted-foreground">
-              No tickets have been issued for this event.
+            <div className="bg-background p-6 text-center">
+              <div className="mx-auto grid h-10 w-10 place-items-center rounded-md bg-muted text-primary">
+                <ClipboardList className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">No tickets issued</p>
+              <p className="mt-1 text-sm text-muted-foreground">Issued tickets will appear here for event staff.</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -381,9 +374,16 @@ export function AdminTicketManagement({
                     <form action={cancelTicketAdminAction}>
                       <input type="hidden" name="eventId" value={eventId} />
                       <input type="hidden" name="ticketId" value={ticket.id} />
-                      <Button type="submit" variant="outline" size="sm">
-                        Cancel
-                      </Button>
+                      <ConfirmSubmitButton
+                        variant="outline"
+                        size="sm"
+                        title="Cancel this ticket?"
+                        description="The ticket QR will stop working and the ticket cannot be used for entry. The ticket record will remain in the event history."
+                        confirmLabel="Cancel ticket"
+                        pendingLabel="Cancelling ticket..."
+                      >
+                        Cancel ticket
+                      </ConfirmSubmitButton>
                     </form>
                   ) : (
                     <span />

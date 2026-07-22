@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
+import { CalendarDays, ChevronRight, Search } from "lucide-react";
 
 import { EventStatusBadge, EventVisibilityBadge } from "@/components/events/event-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/utils";
 import type { EventCategory, EventsAdminPage, EventStatus } from "@/types/events";
 
@@ -139,16 +140,17 @@ export function AdminEventsTable({
               <option value="past">Past</option>
               <option value="all">All dates</option>
             </select>
-            <Button type="submit" variant="outline">
-              Filter
-            </Button>
+            <SubmitButton pendingLabel="Applying filters..." variant="outline">Apply filters</SubmitButton>
           </form>
         </div>
       </div>
 
       {data.events.length === 0 ? (
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
-          <p className="text-base font-semibold">No events found</p>
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-md bg-muted text-primary">
+            <CalendarDays className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-base font-semibold">No events found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Create an event or adjust the filters to find existing events.
           </p>

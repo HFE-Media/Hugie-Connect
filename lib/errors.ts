@@ -41,7 +41,7 @@ export function getSafeErrorMessage(error: unknown) {
   const appError = toAppError(error);
 
   if (appError.code === "INTERNAL_ERROR") {
-    return "Something went wrong. Please try again.";
+    return "We could not complete that action.";
   }
 
   return appError.message;

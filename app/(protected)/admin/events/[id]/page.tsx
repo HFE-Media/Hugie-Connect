@@ -10,6 +10,9 @@ import {
 } from "@/components/events/event-status-badge";
 import { updateEventStatusAdminAction } from "@/features/events/admin-actions";
 import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
+import { FeedbackAlert } from "@/components/ui/feedback-alert";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { requirePermission } from "@/services/auth/server";
 import { createEventsAdminService } from "@/services/events/service";
 
@@ -81,32 +84,28 @@ export default async function AdminEventDetailPage({
               <form action={updateEventStatusAdminAction}>
                 <input type="hidden" name="eventId" value={event.id} />
                 <input type="hidden" name="status" value="published" />
-                <Button type="submit">Publish</Button>
+                <SubmitButton pendingLabel="Publishing event...">Publish event</SubmitButton>
               </form>
             ) : null}
             {event.status !== "cancelled" ? (
               <form action={updateEventStatusAdminAction}>
                 <input type="hidden" name="eventId" value={event.id} />
                 <input type="hidden" name="status" value="cancelled" />
-                <Button type="submit" variant="destructive">
-                  Cancel
-                </Button>
+                <ConfirmSubmitButton
+                  title="Cancel this event?"
+                  description="The event will be marked as cancelled and ticket issuance will stop. Existing event and ticket records will be preserved."
+                  confirmLabel="Cancel event"
+                  pendingLabel="Cancelling event..."
+                >
+                  Cancel event
+                </ConfirmSubmitButton>
               </form>
             ) : null}
           </div>
         </div>
 
-        {success ? (
-          <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {success}
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error}
-          </div>
-        ) : null}
+        <FeedbackAlert tone="success" message={success} className="mb-5" />
+        <FeedbackAlert tone="error" message={error ? `${error} Review the event information and try again.` : null} className="mb-5" />
 
         <AdminEventForm categories={categories} event={event} />
       </section>

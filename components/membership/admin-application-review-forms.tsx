@@ -6,9 +6,10 @@ import {
   rejectMembershipApplicationAdminAction,
 } from "@/features/membership/admin-actions";
 import type { MembershipApplicationAdminDetail } from "@/types/membership";
-import { Button } from "@/components/ui/button";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type AdminApplicationReviewFormsProps = {
   application: MembershipApplicationAdminDetail;
@@ -90,9 +91,7 @@ export function AdminApplicationReviewForms({
             />
           </div>
           <div className="flex items-end">
-            <Button type="submit" className="w-full">
-              Approve
-            </Button>
+            <SubmitButton className="w-full" pendingLabel="Approving application...">Approve application</SubmitButton>
           </div>
         </form>
       </section>
@@ -121,9 +120,15 @@ export function AdminApplicationReviewForms({
               required
             />
           </div>
-          <Button type="submit" variant="destructive" className="w-full">
-            Reject
-          </Button>
+          <ConfirmSubmitButton
+            className="w-full"
+            title="Reject this application?"
+            description="The applicant will be marked as rejected and the reason will be kept in the audit history. This decision cannot be approved without a new review action."
+            confirmLabel="Reject application"
+            pendingLabel="Rejecting application..."
+          >
+            Reject application
+          </ConfirmSubmitButton>
         </form>
 
         <form
@@ -136,10 +141,17 @@ export function AdminApplicationReviewForms({
             name="rejectionReason"
             value="Cancelled by administrator"
           />
-          <Button type="submit" variant="outline" className="w-full">
+          <ConfirmSubmitButton
+            variant="outline"
+            className="w-full"
+            title="Cancel this application?"
+            description="The application will be closed as cancelled and can no longer be approved from this review."
+            confirmLabel="Cancel application"
+            pendingLabel="Cancelling application..."
+          >
             <Ban className="mr-2 h-4 w-4" aria-hidden="true" />
             Cancel application
-          </Button>
+          </ConfirmSubmitButton>
         </form>
       </section>
     </div>

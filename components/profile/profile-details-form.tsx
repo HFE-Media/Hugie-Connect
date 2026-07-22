@@ -7,7 +7,7 @@ import {
 } from "@/features/profile/actions";
 import { getInitialProfileActionState } from "@/features/profile/state";
 import { FormMessage } from "@/components/auth/form-message";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -24,7 +24,7 @@ export function ProfileDetailsForm({
   email,
   mobile,
 }: ProfileDetailsFormProps) {
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     updateOwnProfileAction,
     getInitialProfileActionState(),
   );
@@ -65,7 +65,7 @@ export function ProfileDetailsForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="mobile">Mobile number</Label>
+        <Label htmlFor="mobile">Mobile number <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <Input
           id="mobile"
           name="mobile"
@@ -78,9 +78,7 @@ export function ProfileDetailsForm({
         />
       </div>
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Save profile"}
-      </Button>
+      <SubmitButton pendingLabel="Saving profile...">Save profile</SubmitButton>
     </form>
   );
 }

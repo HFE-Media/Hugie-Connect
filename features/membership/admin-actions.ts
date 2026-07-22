@@ -161,7 +161,7 @@ export async function revokeMembershipCardAdminAction(formData: FormData) {
 
   redirect(
     memberDetailPath(result.data.memberId, {
-      success: "Membership card revoked.",
+      success: "Membership card revoked successfully.",
     }),
   );
 }
@@ -202,7 +202,7 @@ export async function reissueMembershipCardAdminAction(formData: FormData) {
 
   redirect(
     memberDetailPath(result.data.memberId, {
-      success: "Replacement membership card issued.",
+      success: "Replacement membership card issued successfully.",
     }),
   );
 }
@@ -218,7 +218,7 @@ export async function renewMemberAdminAction(formData: FormData) {
   if (!result.success) {
     const memberId = readString(formData, "memberId");
     const message =
-      result.error.issues[0]?.message ?? "Check the renewal details.";
+      result.error.issues[0]?.message ?? "Review the renewal details.";
     redirect(renewalDetailPath(memberId, { error: message }));
   }
 
@@ -248,7 +248,7 @@ export async function renewMemberAdminAction(formData: FormData) {
 
   redirect(
     renewalDetailPath(result.data.memberId, {
-      success: "Membership renewed.",
+      success: "Membership renewed successfully.",
     }),
   );
 }
@@ -261,7 +261,7 @@ export async function updateMemberStatusAdminAction(formData: FormData) {
 
   if (!result.success) {
     const memberId = readString(formData, "memberId");
-    redirect(memberDetailPath(memberId, { error: "Check the member action." }));
+    redirect(memberDetailPath(memberId, { error: "Unable to update the member status." }));
   }
 
   const { service, appUser } = await getMemberAdminContext();
@@ -288,8 +288,8 @@ export async function updateMemberStatusAdminAction(formData: FormData) {
     memberDetailPath(result.data.memberId, {
       success:
         result.data.status === "suspended"
-          ? "Member suspended."
-          : "Member reactivated.",
+          ? "Member suspended successfully."
+          : "Member reactivated successfully.",
     }),
   );
 }
@@ -306,7 +306,7 @@ export async function approveMembershipApplicationAdminAction(
 
   if (!result.success) {
     const message =
-      result.error.issues[0]?.message ?? "Check the approval fields.";
+      result.error.issues[0]?.message ?? "Review the approval fields.";
     const applicationId = readString(formData, "applicationId");
     redirect(detailPath(applicationId, { error: message }));
   }
@@ -335,7 +335,7 @@ export async function approveMembershipApplicationAdminAction(
 
   redirect(
     detailPath(result.data.applicationId, {
-      success: "Membership application approved.",
+      success: "Membership application approved successfully.",
     }),
   );
 }
@@ -376,7 +376,7 @@ export async function rejectMembershipApplicationAdminAction(
 
   redirect(
     detailPath(result.data.applicationId, {
-      success: "Membership application rejected.",
+      success: "Membership application rejected successfully.",
     }),
   );
 }
@@ -391,7 +391,7 @@ export async function cancelMembershipApplicationAdminAction(
 
   if (!result.success) {
     const applicationId = readString(formData, "applicationId");
-    redirect(detailPath(applicationId, { error: "Check the cancellation form." }));
+    redirect(detailPath(applicationId, { error: "Unable to cancel this application." }));
   }
 
   const { service, appUser } = await getAdminReviewContext();
@@ -417,7 +417,7 @@ export async function cancelMembershipApplicationAdminAction(
 
   redirect(
     detailPath(result.data.applicationId, {
-      success: "Membership application cancelled.",
+      success: "Membership application cancelled successfully.",
     }),
   );
 }
