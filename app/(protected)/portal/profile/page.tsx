@@ -9,6 +9,7 @@ import {
 
 import { ChangePasswordForm } from "@/components/profile/change-password-form";
 import { ProfileDetailsForm } from "@/components/profile/profile-details-form";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/services/auth/server";
@@ -200,16 +201,13 @@ export default async function ProfilePage() {
   const mobile = appUser?.mobile ?? "";
 
   return (
-    <main className="container py-8">
-      <div className="mb-6">
-        <p className="text-sm font-medium uppercase tracking-normal text-muted-foreground">
-          Account
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold">Profile</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Manage your personal contact details and account password.
-        </p>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="Profile"
+        description="Manage your personal contact details and account password."
+        icon={UserRound}
+        breadcrumbs={[{ label: "Portal", href: "/portal" }, { label: "Profile" }]}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">

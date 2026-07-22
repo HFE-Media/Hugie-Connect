@@ -119,8 +119,8 @@ export function AdminRenewalsTable({
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
           <p className="text-base font-semibold">No renewals found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Adjust the renewal filter or search term to find members eligible
-            for renewal.
+            Memberships eligible for renewal will appear here. Adjust the
+            filters to review another validity window.
           </p>
         </div>
       ) : (

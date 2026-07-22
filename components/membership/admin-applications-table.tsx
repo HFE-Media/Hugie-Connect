@@ -115,8 +115,8 @@ export function AdminApplicationsTable({
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
           <p className="text-base font-semibold">No applications found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Adjust the status filter or search term to find submitted membership
-            applications.
+            New membership applications will appear here. Adjust the filters if
+            you are looking for an earlier submission.
           </p>
         </div>
       ) : (

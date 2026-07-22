@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { UserRound } from "lucide-react";
 
 import { AdminMemberActions } from "@/components/membership/admin-member-actions";
 import { AdminMemberDetail } from "@/components/membership/admin-member-detail";
-import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { toAppError } from "@/lib/errors";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
@@ -57,15 +57,13 @@ export default async function AdminMembershipMemberDetailPage({
   }
 
   return (
-    <main className="container space-y-6 py-8">
-      <div>
-        <Button asChild variant="ghost" className="-ml-3">
-          <Link href="/admin/membership/members">
-            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-            Members
-          </Link>
-        </Button>
-      </div>
+    <main className="container space-y-6 py-6 sm:py-8">
+      <ProtectedPageHeader
+        title={member.memberName}
+        description={`Member ${member.member_number}`}
+        icon={UserRound}
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Members", href: "/admin/membership/members" }, { label: "Member" }]}
+      />
 
       {success ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">

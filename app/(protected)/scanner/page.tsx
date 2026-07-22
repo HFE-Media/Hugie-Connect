@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck, ScanLine, TicketCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
 
@@ -13,18 +14,13 @@ export default async function ScannerShellPage() {
   const showTicketScanner = hasPermission(profile.roles, "events:tickets:scan");
 
   return (
-    <main className="container py-8">
-      <section className="rounded-2xl border bg-card p-6 shadow-soft">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-          <ScanLine className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <h1 className="mt-5 text-2xl font-semibold">Scanner</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Choose the scanner flow for the code in front of you. Membership QR
-          verification and event ticket check-in stay separate.
-        </p>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="Scanner Hub"
+        description="Choose the verification tool for the code in front of you."
+        icon={ScanLine}
+      />
+      <section aria-label="Scanner tools" className="grid gap-4 sm:grid-cols-2">
           {showMembershipScanner ? (
             <Button asChild variant="outline" className="h-auto justify-start p-4">
               <Link href="/scanner/membership">
@@ -52,7 +48,6 @@ export default async function ScannerShellPage() {
               </Link>
             </Button>
           ) : null}
-        </div>
       </section>
     </main>
   );

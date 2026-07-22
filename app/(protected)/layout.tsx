@@ -1,8 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { Building2 } from "lucide-react";
 
-import { LogoutButton } from "@/components/auth/logout-button";
+import { ProtectedShell } from "@/components/layout/protected-shell";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requireProfile } from "@/services/auth/server";
 import { createMembershipService } from "@/services/membership/service";
@@ -22,6 +20,11 @@ export default async function ProtectedLayout({
   const showScanner = hasPermission(profile.roles, "scanner:shell:view");
   const showEventAdmin = hasPermission(profile.roles, "events:manage");
   const showTickets = hasPermission(profile.roles, "events:tickets:view");
+  const showApplications = hasPermission(profile.roles, "membership:applications:manage");
+  const showMembers = hasPermission(profile.roles, "membership:members:manage");
+  const showRenewals = hasPermission(profile.roles, "membership:renew");
+  const showMembershipScanner = hasPermission(profile.roles, "membership:verify");
+  const showTicketScanner = hasPermission(profile.roles, "events:tickets:scan");
   const membershipService = createMembershipService(
     await createSupabaseServerClient(),
   );
@@ -31,73 +34,27 @@ export default async function ProtectedLayout({
     .catch(() => false);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/portal" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Building2 className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-none">
-                Hugie Connect
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Authenticated area
-              </p>
-            </div>
-          </Link>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/portal"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Portal
-            </Link>
-            <Link
-              href={showEventAdmin ? "/admin/events" : "/events"}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              Events
-            </Link>
-            {hasMembership ? (
-              <Link
-                href="/portal/membership"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                My Membership
-              </Link>
-            ) : null}
-            {showTickets ? (
-              <Link
-                href="/portal/tickets"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Tickets
-              </Link>
-            ) : null}
-            {showAdmin ? (
-              <Link
-                href="/admin"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Admin
-              </Link>
-            ) : null}
-            {showScanner ? (
-              <Link
-                href="/scanner"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                Scanner
-              </Link>
-            ) : null}
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+    <ProtectedShell
+      user={{
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        roles: profile.roles,
+      }}
+      access={{
+        hasMembership,
+        showAdmin,
+        showApplications,
+        showMembers,
+        showRenewals,
+        showEventAdmin,
+        showTickets,
+        showScanner,
+        showMembershipScanner,
+        showTicketScanner,
+      }}
+    >
       {children}
-    </div>
+    </ProtectedShell>
   );
 }

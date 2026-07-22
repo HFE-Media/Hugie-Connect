@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 
 import { AdminRenewalsTable } from "@/components/membership/admin-renewals-table";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
@@ -63,23 +64,13 @@ export default async function AdminMembershipRenewalsPage({
   });
 
   return (
-    <main className="container py-8">
-      <div className="mb-6">
-        <Button asChild variant="ghost" className="-ml-3 mb-3">
-          <Link href="/admin">Admin</Link>
-        </Button>
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <RefreshCw className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <h1 className="mt-5 text-2xl font-semibold sm:text-3xl">
-          Membership renewals
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Extend existing memberships without creating duplicate members,
-          applications, cards, or QR codes. Expiring soon means within{" "}
-          {data.expiringSoonDays} days.
-        </p>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="Membership renewals"
+        description={`Review membership validity and renew eligible records. Expiring soon means within ${data.expiringSoonDays} days.`}
+        icon={RefreshCw}
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Renewals" }]}
+      />
 
       {success ? (
         <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">

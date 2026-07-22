@@ -119,8 +119,8 @@ export function AdminMembersTable({
         <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
           <p className="text-base font-semibold">No members found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Adjust the filters or search term to find approved members in this
-            organisation.
+            Approved members will appear here. Adjust the filters if you are
+            looking for an existing record.
           </p>
         </div>
       ) : (

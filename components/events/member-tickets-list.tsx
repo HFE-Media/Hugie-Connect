@@ -36,10 +36,9 @@ export function MemberTicketsList({ tickets }: MemberTicketsListProps) {
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Ticket className="h-6 w-6" aria-hidden="true" />
         </div>
-        <h1 className="mt-5 text-2xl font-semibold">No tickets yet</h1>
+        <h2 className="mt-5 text-xl font-semibold">No tickets issued</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Tickets linked to your account or verified account email will appear
-          here after they are issued.
+          Tickets assigned to your account will appear here.
         </p>
         <Button asChild className="mt-5" variant="outline">
           <Link href="/events">Browse events</Link>

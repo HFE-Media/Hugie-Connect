@@ -5,7 +5,6 @@ import {
   Clock3,
   CreditCard,
   LockKeyhole,
-  ShoppingBag,
   Sparkles,
   Ticket,
   UserCircle,
@@ -515,22 +514,16 @@ export default async function PortalPage() {
                 />
               ) : null}
               <QuickAction
+                href="/events"
                 icon={CalendarClock}
                 title="Events"
-                description="Coming in a future sprint."
-                disabled
+                description="Browse published community events."
               />
               <QuickAction
+                href="/portal/tickets"
                 icon={Ticket}
                 title="Tickets"
-                description="Coming in a future sprint."
-                disabled
-              />
-              <QuickAction
-                icon={ShoppingBag}
-                title="Shop"
-                description="Coming in a future sprint."
-                disabled
+                description="View tickets issued to your account."
               />
             </div>
           </section>

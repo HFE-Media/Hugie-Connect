@@ -1,11 +1,11 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
 import {
   EmptyMembershipState,
   MemberMembershipSummaryCard,
 } from "@/components/membership/member-membership-summary";
 import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { linkOwnMembershipAction } from "@/features/membership/actions";
 import { requireProfile } from "@/services/auth/server";
 import { createMembershipService } from "@/services/membership/service";
@@ -78,15 +78,13 @@ export default async function MyMembershipPage({
     (!summary || linkStatus === "linked" || linkStatus === "already_linked");
 
   return (
-    <main className="container py-8">
-      <div className="mb-5">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/portal">
-            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-            Portal
-          </Link>
-        </Button>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="My Membership"
+        description="View your membership status, validity details and digital card."
+        icon={CreditCard}
+        breadcrumbs={[{ label: "Portal", href: "/portal" }, { label: "Membership" }]}
+      />
 
       {shouldShowLinkMessage ? (
         <div

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 
 import { AdminApplicationsTable } from "@/components/membership/admin-applications-table";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { Button } from "@/components/ui/button";
 import { requirePermission } from "@/services/auth/server";
 import { createMembershipAdminService } from "@/services/membership/service";
@@ -62,25 +63,13 @@ export default async function AdminMembershipApplicationsPage({
   });
 
   return (
-    <main className="container py-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Button asChild variant="ghost" className="-ml-3 mb-3">
-            <Link href="/admin">Admin</Link>
-          </Button>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <ClipboardList className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold sm:text-3xl">
-            Membership applications
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Review submitted applications for your organisation. Segment-specific
-            OHB/HOK restrictions are not modelled yet, so access is currently
-            organisation-scoped.
-          </p>
-        </div>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="Membership applications"
+        description="Review submitted applications for your organisation."
+        icon={ClipboardList}
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Membership" }, { label: "Applications" }]}
+      />
 
       {success ? (
         <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">

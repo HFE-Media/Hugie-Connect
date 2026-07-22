@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, MapPin } from "lucide-react";
+import { CalendarDays, MapPin, Ticket } from "lucide-react";
 
 import { TicketQrCode } from "@/components/events/ticket-qr-code";
-import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { requirePermission } from "@/services/auth/server";
 import { createEventsAdminService } from "@/services/events/service";
 
@@ -42,15 +42,13 @@ export default async function PortalTicketDetailPage({
   }
 
   return (
-    <main className="container py-8">
-      <div className="mb-5">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/portal/tickets">
-            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-            My Tickets
-          </Link>
-        </Button>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title={ticket.event?.title ?? "Event ticket"}
+        description={`Ticket ${ticket.ticket_number} for ${ticket.holder_name}`}
+        icon={Ticket}
+        breadcrumbs={[{ label: "Portal", href: "/portal" }, { label: "Tickets", href: "/portal/tickets" }, { label: "Ticket" }]}
+      />
 
       <article className="grid gap-6 rounded-2xl border bg-card p-5 shadow-soft md:grid-cols-[1fr_260px]">
         <section>
@@ -62,13 +60,6 @@ export default async function PortalTicketDetailPage({
               {ticket.ticket_type?.name ?? "Ticket"}
             </span>
           </div>
-
-          <h1 className="mt-5 text-2xl font-semibold">
-            {ticket.event?.title ?? "Event ticket"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Ticket {ticket.ticket_number} for {ticket.holder_name}
-          </p>
 
           <div className="mt-5 space-y-3 text-sm text-muted-foreground">
             <p className="flex items-center gap-2">

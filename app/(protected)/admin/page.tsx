@@ -1,13 +1,25 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { CalendarDays, ClipboardList, RefreshCw, ShieldCheck, UsersRound, type LucideIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { hasPermission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/services/auth/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminShellPage() {
+function AdminDestination({ href, icon: Icon, title, description }: { href: string; icon: LucideIcon; title: string; description: string }) {
+  return (
+    <Link href={href} className="group flex min-h-36 flex-col rounded-lg border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-soft">
+      <div className="grid h-10 w-10 place-items-center rounded-md bg-muted text-primary">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 font-semibold group-hover:text-secondary">{title}</h2>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+    </Link>
+  );
+}
+
+export default async function AdminPage() {
   const profile = await requirePermission("admin:shell:view");
   const showMembershipApplications = hasPermission(
     profile.roles,
@@ -18,44 +30,25 @@ export default async function AdminShellPage() {
   const showEvents = hasPermission(profile.roles, "events:manage");
 
   return (
-    <main className="container py-8">
-      <section className="rounded-2xl border bg-card p-6 shadow-soft">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <ShieldCheck className="h-6 w-6" aria-hidden="true" />
-        </div>
-        <h1 className="mt-5 text-2xl font-semibold">Admin shell</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          This route verifies administrator access and protected navigation.
-          Operational dashboards and business modules are intentionally outside
-          Sprint 01.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="Administration"
+        description="Manage memberships, renewals and community events from one place."
+        icon={ShieldCheck}
+      />
+      <section aria-label="Administration modules" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {showMembershipApplications ? (
-            <Button asChild>
-              <Link href="/admin/membership/applications">
-                Membership applications
-              </Link>
-            </Button>
+            <AdminDestination href="/admin/membership/applications" icon={ClipboardList} title="Applications" description="Review and decide submitted membership applications." />
           ) : null}
           {showMembers ? (
-            <Button asChild variant="outline">
-              <Link href="/admin/membership/members">Members</Link>
-            </Button>
+            <AdminDestination href="/admin/membership/members" icon={UsersRound} title="Members" description="View member records and manage membership status." />
           ) : null}
           {showRenewals ? (
-            <Button asChild variant="outline">
-              <Link href="/admin/membership/renewals">Renewals</Link>
-            </Button>
+            <AdminDestination href="/admin/membership/renewals" icon={RefreshCw} title="Renewals" description="Review validity and extend eligible memberships." />
           ) : null}
           {showEvents ? (
-            <Button asChild variant="outline">
-              <Link href="/admin/events">Events</Link>
-            </Button>
+            <AdminDestination href="/admin/events" icon={CalendarDays} title="Events" description="Create, publish and manage community events." />
           ) : null}
-          <Button asChild variant="outline">
-            <Link href="/admin/users">Role foundation</Link>
-          </Button>
-        </div>
       </section>
     </main>
   );

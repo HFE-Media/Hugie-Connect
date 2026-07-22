@@ -152,6 +152,9 @@ export function AdminEventsTable({
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             Create an event or adjust the filters to find existing events.
           </p>
+          <Button asChild className="mt-5">
+            <Link href="/admin/events/new">Create event</Link>
+          </Button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-card shadow-soft">

@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { Ticket } from "lucide-react";
 
 import { MemberTicketsList } from "@/components/events/member-tickets-list";
-import { Button } from "@/components/ui/button";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import { requirePermission } from "@/services/auth/server";
 import { createEventsAdminService } from "@/services/events/service";
 
@@ -14,22 +13,13 @@ export default async function PortalTicketsPage() {
   const data = await service.listTicketsForAuthenticatedUser(profile.id);
 
   return (
-    <main className="container py-8">
-      <div className="mb-5">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/portal">
-            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
-            Portal
-          </Link>
-        </Button>
-      </div>
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">My Tickets</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tickets linked to your Hugie Connect account.
-        </p>
-      </div>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title="My Tickets"
+        description="View your issued event tickets and entry details."
+        icon={Ticket}
+        breadcrumbs={[{ label: "Portal", href: "/portal" }, { label: "Tickets" }]}
+      />
 
       <MemberTicketsList tickets={data.tickets} />
     </main>

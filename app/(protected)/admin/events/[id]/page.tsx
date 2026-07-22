@@ -3,6 +3,7 @@ import { CalendarDays } from "lucide-react";
 
 import { AdminEventForm } from "@/components/events/admin-event-form";
 import { AdminTicketManagement } from "@/components/events/admin-ticket-management";
+import { ProtectedPageHeader } from "@/components/layout/protected-page-header";
 import {
   EventStatusBadge,
   EventVisibilityBadge,
@@ -56,18 +57,19 @@ export default async function AdminEventDetailPage({
   ]);
 
   return (
-    <main className="container py-8">
-      <Button asChild variant="ghost" className="-ml-3 mb-4">
-        <Link href="/admin/events">Events</Link>
-      </Button>
+    <main className="container py-6 sm:py-8">
+      <ProtectedPageHeader
+        title={event.title}
+        description="Edit event details, publishing status and ticket configuration."
+        icon={CalendarDays}
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Events", href: "/admin/events" }, { label: event.title }]}
+        actions={event.status === "published" ? <Button asChild variant="outline"><Link href={`/events/${event.slug}`}>View public page</Link></Button> : undefined}
+      />
 
       <section className="rounded-2xl border bg-card p-5 shadow-soft sm:p-6">
         <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <CalendarDays className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <h1 className="mt-5 text-2xl font-semibold">{event.title}</h1>
+            <h2 className="text-lg font-semibold">Event status</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               <EventStatusBadge status={event.status} />
               <EventVisibilityBadge visibility={event.visibility} />
@@ -90,11 +92,6 @@ export default async function AdminEventDetailPage({
                   Cancel
                 </Button>
               </form>
-            ) : null}
-            {event.status === "published" ? (
-              <Button asChild variant="outline">
-                <Link href={`/events/${event.slug}`}>View public page</Link>
-              </Button>
             ) : null}
           </div>
         </div>

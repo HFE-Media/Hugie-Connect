@@ -141,7 +141,7 @@ export function MemberMembershipSummaryCard({
           <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-semibold">My Membership</h1>
+          <h2 className="text-xl font-semibold">Digital membership card</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Your current membership record, status, and validity details.
           </p>
@@ -242,7 +242,7 @@ export function EmptyMembershipState({
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <CreditCard className="h-6 w-6" aria-hidden="true" />
       </div>
-      <h1 className="mt-5 text-2xl font-semibold">No membership found</h1>
+      <h2 className="mt-5 text-xl font-semibold">No membership found</h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
         You do not have an active or pending membership linked to this account
         yet. Once your membership is approved and connected, it will appear
