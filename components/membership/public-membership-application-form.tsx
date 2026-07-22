@@ -27,13 +27,13 @@ function formatMembershipPrice(price: number | null) {
   }).format(price);
 }
 
-function FieldError({ errors }: { errors?: string[] }) {
+function FieldError({ errors, id }: { errors?: string[]; id: string }) {
   if (!errors?.length) {
     return null;
   }
 
   return (
-    <p className="text-sm text-destructive" role="alert">
+    <p id={id} className="text-sm text-destructive" role="alert">
       {errors[0]}
     </p>
   );
@@ -61,9 +61,10 @@ export function PublicMembershipApplicationForm({
         </div>
       ) : null}
 
-      <section className="space-y-4">
+      <section className="space-y-4" aria-labelledby="membership-step-title">
         <div>
-          <h2 className="text-xl font-semibold">Choose your membership</h2>
+          <p className="text-xs font-semibold uppercase text-secondary">Step 1 of 2</p>
+          <h2 id="membership-step-title" className="mt-1 text-xl font-semibold">Choose your membership</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Select the option that best matches how you want to participate.
           </p>
@@ -74,7 +75,7 @@ export function PublicMembershipApplicationForm({
             <label
               key={membershipType.id}
               className={cn(
-                "group cursor-pointer rounded-2xl border bg-card p-4 shadow-sm transition hover:border-secondary/60 hover:shadow-soft",
+                "group cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition hover:border-secondary/60 hover:shadow-soft",
                 "has-[:checked]:border-secondary has-[:checked]:ring-2 has-[:checked]:ring-secondary/20",
               )}
             >
@@ -84,6 +85,7 @@ export function PublicMembershipApplicationForm({
                 name="membershipTypeId"
                 value={membershipType.id}
                 defaultChecked={index === 0}
+                aria-describedby="membership-type-error"
               />
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -105,12 +107,13 @@ export function PublicMembershipApplicationForm({
             </label>
           ))}
         </div>
-        <FieldError errors={state.fieldErrors?.membershipTypeId} />
+        <FieldError id="membership-type-error" errors={state.fieldErrors?.membershipTypeId} />
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4" aria-labelledby="details-step-title">
         <div>
-          <h2 className="text-xl font-semibold">Your details</h2>
+          <p className="text-xs font-semibold uppercase text-secondary">Step 2 of 2</p>
+          <h2 id="details-step-title" className="mt-1 text-xl font-semibold">Your details</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             These details help the organisation review and contact you about
             your application.
@@ -120,43 +123,53 @@ export function PublicMembershipApplicationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="firstName">First name</Label>
-            <Input id="firstName" name="firstName" autoComplete="given-name" />
-            <FieldError errors={state.fieldErrors?.firstName} />
+            <Input id="firstName" name="firstName" autoComplete="given-name" required aria-invalid={Boolean(state.fieldErrors?.firstName)} aria-describedby="first-name-error" />
+            <FieldError id="first-name-error" errors={state.fieldErrors?.firstName} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="lastName">Last name</Label>
-            <Input id="lastName" name="lastName" autoComplete="family-name" />
-            <FieldError errors={state.fieldErrors?.lastName} />
+            <Input id="lastName" name="lastName" autoComplete="family-name" required aria-invalid={Boolean(state.fieldErrors?.lastName)} aria-describedby="last-name-error" />
+            <FieldError id="last-name-error" errors={state.fieldErrors?.lastName} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" />
-            <FieldError errors={state.fieldErrors?.email} />
+            <Input id="email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(state.fieldErrors?.email)} aria-describedby="email-error" />
+            <FieldError id="email-error" errors={state.fieldErrors?.email} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="mobile">Mobile number</Label>
             <Input id="mobile" name="mobile" type="tel" autoComplete="tel" />
-            <FieldError errors={state.fieldErrors?.mobile} />
+            <FieldError id="mobile-error" errors={state.fieldErrors?.mobile} />
           </div>
         </div>
       </section>
 
-      <section className="space-y-4 rounded-2xl border bg-background p-4">
+      <section className="space-y-4 rounded-lg border bg-background p-4" aria-labelledby="consent-title">
+        <div>
+          <h2 id="consent-title" className="text-sm font-semibold">Privacy and consent</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Review how your information is used before submitting.
+          </p>
+        </div>
         <label className="flex items-start gap-3 text-sm leading-6">
           <input
             type="checkbox"
             name="termsAccepted"
             className="mt-1 h-4 w-4 rounded border-input text-secondary focus:ring-secondary"
+            aria-describedby="terms-error privacy-note"
           />
           <span>
-            I confirm that the information provided is accurate and may be used
-            to process this membership application.
+            I confirm that the information provided is accurate and consent to
+            its use for reviewing and administering my membership application.
+            <a href="#privacy" className="ml-1 font-medium text-secondary hover:underline">
+              Read the privacy note.
+            </a>
           </span>
         </label>
-        <FieldError errors={state.fieldErrors?.termsAccepted} />
+        <FieldError id="terms-error" errors={state.fieldErrors?.termsAccepted} />
       </section>
 
       <Button type="submit" size="lg" className="w-full" disabled={pending}>

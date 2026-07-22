@@ -52,4 +52,18 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  a {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+}
+
+@layer components {
+  .footer-link {
+    @apply w-fit rounded-sm text-primary-foreground/70 transition-colors hover:text-primary-foreground hover:underline;
+  }
 }

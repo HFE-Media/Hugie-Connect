@@ -31,12 +31,12 @@ export function ForgotPasswordForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Sending reset link..." : "Send reset link"}
       </Button>
 
       <p className="text-center text-sm">
-        <Link href="/login" className="font-medium text-secondary hover:underline">
+        <Link href="/login" className="inline-flex min-h-11 items-center font-medium text-secondary hover:underline">
           Return to login
         </Link>
       </p>

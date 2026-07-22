@@ -30,6 +30,9 @@ export function ResetPasswordForm() {
           minLength={8}
           required
         />
+        <p className="text-xs leading-5 text-muted-foreground">
+          Use at least 8 characters and avoid passwords used on other services.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -44,7 +47,7 @@ export function ResetPasswordForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Updating password..." : "Update password"}
       </Button>
 

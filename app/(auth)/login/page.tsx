@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AuthCard } from "@/components/auth/auth-card";
@@ -6,6 +7,11 @@ import { getPostLoginPath } from "@/lib/auth/permissions";
 import { getOptionalCurrentProfile } from "@/services/auth/server";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in securely to your Hugie Connect portal.",
+};
 
 export default async function LoginPage() {
   const profile = await getOptionalCurrentProfile();
@@ -17,7 +23,7 @@ export default async function LoginPage() {
   return (
     <AuthCard
       title="Sign in"
-      description="Use your secure account to access the right portal for your role."
+      description="Welcome back. Sign in to access your membership, tickets or administration tools."
     >
       <LoginForm />
     </AuthCard>

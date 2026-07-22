@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, MapPin, Search } from "lucide-react";
+import { ArrowRight, CalendarDays, CalendarX2, MapPin, Search, X } from "lucide-react";
 
 import { EventVisibilityBadge } from "@/components/events/event-status-badge";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,11 @@ function formatDate(value: string) {
     weekday: "short",
     day: "2-digit",
     month: "short",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Africa/Johannesburg",
+    timeZoneName: "short",
   }).format(new Date(value));
 }
 
@@ -45,14 +48,16 @@ export function PublicEventsList({
 }: PublicEventsListProps) {
   return (
     <section className="space-y-6">
-      <div className="rounded-2xl border bg-card p-4 shadow-soft sm:p-5">
+      <div className="rounded-lg border bg-card p-4 shadow-soft sm:p-5">
         <form className="grid gap-2 md:grid-cols-[1fr_220px_auto]">
           <div className="relative">
+            <label className="sr-only" htmlFor="event-search">Search events</label>
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
+              id="event-search"
               name="q"
               defaultValue={search}
               placeholder="Search events"
@@ -60,6 +65,7 @@ export function PublicEventsList({
             />
           </div>
           <select
+            aria-label="Filter by event category"
             name="category"
             defaultValue={categoryId ?? ""}
             className="h-11 rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm"
@@ -71,18 +77,36 @@ export function PublicEventsList({
               </option>
             ))}
           </select>
-          <Button type="submit" variant="outline">
+          <Button type="submit">
             Filter
           </Button>
         </form>
+        {search || categoryId ? (
+          <Button asChild variant="ghost" size="sm" className="mt-3">
+            <Link href="/events">
+              <X className="mr-2 h-4 w-4" aria-hidden="true" />
+              Clear filters
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       {data.events.length === 0 ? (
-        <div className="rounded-2xl border bg-card p-8 text-center shadow-soft">
-          <p className="text-base font-semibold">No upcoming events found</p>
+        <div className="rounded-lg border bg-card px-6 py-12 text-center shadow-soft">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground">
+            <CalendarX2 className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <p className="mt-5 text-lg font-semibold">No upcoming events found</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Published public events will appear here as soon as they are ready.
+            {search || categoryId
+              ? "Try a different search or clear the filters to see all upcoming events."
+              : "There are no published events on the calendar yet. Please check back soon."}
           </p>
+          {search || categoryId ? (
+            <Button asChild variant="outline" className="mt-5">
+              <Link href="/events">View all events</Link>
+            </Button>
+          ) : null}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -90,7 +114,7 @@ export function PublicEventsList({
             <Link
               key={event.id}
               href={`/events/${event.slug}`}
-              className="group overflow-hidden rounded-2xl border bg-card shadow-soft transition-colors hover:bg-muted/30"
+              className="group overflow-hidden rounded-lg border bg-card shadow-soft transition hover:-translate-y-0.5 hover:border-secondary/40 hover:shadow-lg"
             >
               {event.featured_image_url ? (
                 <div
@@ -126,13 +150,18 @@ export function PublicEventsList({
                     {event.venue ?? "Venue to be confirmed"}
                   </p>
                 </div>
+                <p className="mt-5 flex items-center text-sm font-semibold text-secondary">
+                  View event
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                </p>
               </div>
             </Link>
           ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 text-sm text-muted-foreground shadow-soft sm:flex-row sm:items-center sm:justify-between">
+      {data.pageCount > 1 ? (
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm text-muted-foreground shadow-soft sm:flex-row sm:items-center sm:justify-between">
         <span>
           Showing page {data.page} of {data.pageCount} - {data.totalCount} total
         </span>
@@ -145,6 +174,7 @@ export function PublicEventsList({
                 page: Math.max(1, data.page - 1),
               })}
               className={data.page <= 1 ? "pointer-events-none opacity-50" : ""}
+              aria-disabled={data.page <= 1}
             >
               Previous
             </Link>
@@ -161,12 +191,14 @@ export function PublicEventsList({
                   ? "pointer-events-none opacity-50"
                   : ""
               }
+              aria-disabled={data.page >= data.pageCount}
             >
               Next
             </Link>
           </Button>
         </div>
       </div>
+      ) : null}
     </section>
   );
 }

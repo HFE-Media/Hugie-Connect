@@ -36,7 +36,7 @@ export function LoginForm() {
           <Label htmlFor="password">Password</Label>
           <Link
             href="/forgot-password"
-            className="text-sm font-medium text-secondary hover:underline"
+            className="flex min-h-11 items-center text-sm font-medium text-secondary hover:underline"
           >
             Forgot password?
           </Link>
@@ -50,12 +50,12 @@ export function LoginForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Signing in..." : "Sign in"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Need access? Contact your organisation administrator.
+        Your account is created when an authorised application is approved.
       </p>
     </form>
   );

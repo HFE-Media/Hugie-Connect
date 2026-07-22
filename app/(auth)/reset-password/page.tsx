@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthCard } from "@/components/auth/auth-card";
@@ -6,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { getOptionalCurrentProfile } from "@/services/auth/server";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Choose a new password",
+  description: "Securely choose a new password for your Hugie Connect account.",
+};
 
 type ResetPasswordPageProps = {
   searchParams?: Promise<{
@@ -31,7 +37,7 @@ export default async function ResetPasswordPage({
         }
       >
         <div className="space-y-4">
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
             No valid password setup session was found. Request a new invitation
             or reset link before choosing a password.
           </p>

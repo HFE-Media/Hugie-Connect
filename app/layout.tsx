@@ -11,13 +11,40 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
+const deploymentUrl =
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+const metadataBase = new URL(
+  deploymentUrl ? `https://${deploymentUrl}` : "http://localhost:3000",
+);
+
 export const metadata: Metadata = {
+  metadataBase,
   title: {
     default: "Hugie Connect",
     template: "%s | Hugie Connect",
   },
   description:
     "A modern community management platform for memberships, events, ticketing, access control, and administration.",
+  applicationName: "Hugie Connect",
+  openGraph: {
+    type: "website",
+    siteName: "Hugie Connect",
+    title: "Hugie Connect",
+    description:
+      "Memberships, events and community access in one secure platform.",
+    images: ["/images/hugie-connect-community-hero.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Hugie Connect",
+    description:
+      "Memberships, events and community access in one secure platform.",
+    images: ["/images/hugie-connect-community-hero.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 type RootLayoutProps = {

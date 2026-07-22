@@ -1,11 +1,11 @@
 import { Ticket } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import type { EventTicketType } from "@/types/events";
 
 type PublicEventTicketTypesProps = {
   ticketTypes: EventTicketType[];
   capacity: number | null;
+  available?: boolean;
 };
 
 function money(value: number, currency: string) {
@@ -32,15 +32,20 @@ function salesLabel(ticketType: EventTicketType) {
 export function PublicEventTicketTypes({
   ticketTypes,
   capacity,
+  available = true,
 }: PublicEventTicketTypesProps) {
   return (
-    <aside className="rounded-2xl border bg-card p-5 shadow-soft sm:p-6 lg:self-start">
+    <aside className="rounded-lg border bg-card p-5 shadow-soft sm:p-6 lg:self-start">
       <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <Ticket className="h-5 w-5" aria-hidden="true" />
       </div>
       <h2 className="mt-4 text-lg font-semibold">Tickets</h2>
 
-      {ticketTypes.length === 0 ? (
+      {!available ? (
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Ticket information could not be loaded right now. Please try again shortly.
+        </p>
+      ) : ticketTypes.length === 0 ? (
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {capacity ? `${capacity} capacity. ` : ""}
           Ticket types will appear here once they are available.
@@ -73,9 +78,11 @@ export function PublicEventTicketTypes({
         </div>
       )}
 
-      <Button className="mt-5 w-full" disabled>
-        Ticket purchasing coming next
-      </Button>
+      {ticketTypes.length > 0 ? (
+        <p className="mt-5 border-t pt-4 text-xs leading-5 text-muted-foreground">
+          Tickets are issued securely through the event organising team.
+        </p>
+      ) : null}
     </aside>
   );
 }
